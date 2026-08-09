@@ -13,17 +13,17 @@ function hold(seconds: number, boosting: boolean) {
 
 describe("car-like throttle", () => {
   it("short hold has less throttle than long hold", () => {
-    const short = hold(0.3, true);
-    const long = hold(1.6, true);
-    expect(short.throttle).toBeLessThan(0.35);
+    const short = hold(0.35, true);
+    const long = hold(2.4, true);
+    expect(short.throttle).toBeLessThan(0.3);
     expect(long.throttle).toBeGreaterThan(0.85);
     expect(short.speed01).toBeLessThan(long.speed01);
   });
 
   it("coasts after release instead of stopping immediately", () => {
-    const p = hold(1.8, true);
+    const p = hold(2.8, true);
     const speedAtRelease = p.speed01;
-    expect(speedAtRelease).toBeGreaterThan(0.4);
+    expect(speedAtRelease).toBeGreaterThan(0.35);
 
     const dt = 1 / 60;
     for (let i = 0; i < 90; i++) {

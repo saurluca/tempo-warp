@@ -8,12 +8,12 @@ export const tuning = {
    * Car-like throttle: hold click to spool up, release to coast.
    * throttleRise ~ seconds toward full; throttleFall ~ seconds back to idle.
    */
-  throttleRise: 1.35,
-  throttleFall: 2.4,
+  throttleRise: 2.1,
+  throttleFall: 2.8,
   /** Engine push while throttling (world units / s² at full throttle) */
-  engineAccel: 38,
+  engineAccel: 22,
   /** Gentle steer while coasting / aiming without full gas */
-  steerAccel: 14,
+  steerAccel: 9,
   /** Low coast drag (1/s). Higher = stops sooner. Keep low for car glide. */
   coastDrag: 0.35,
   /** Extra drag only used as soft speed limiter near max */
@@ -42,17 +42,17 @@ export const tuning = {
   /** Audio */
   audioFilterOpen: 1400,
 
-  /** Fewer, larger obstacles */
-  densityMin: 3,
-  densityMax: 12,
-  spawnSpacingMax: 14,
-  spawnSpacingMin: 5.5,
-  spawnRingMin: 16,
-  spawnRingMax: 34,
-  clearBubble: 8,
-  cullRadius: 52,
-  safeRingCount: 3,
-  safeRingRadius: 12,
+  /** Sparse, larger obstacles */
+  densityMin: 2,
+  densityMax: 6,
+  spawnSpacingMax: 20,
+  spawnSpacingMin: 9,
+  spawnRingMin: 18,
+  spawnRingMax: 38,
+  clearBubble: 10,
+  cullRadius: 56,
+  safeRingCount: 2,
+  safeRingRadius: 14,
   moverChanceMin: 0.08,
   moverChanceMax: 0.35,
   obstacleHalfMin: 1.15,
