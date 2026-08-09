@@ -30,8 +30,12 @@ const pointer = createPointer(game.renderer.domElement, game.camera);
 const player = createPlayer();
 const field = createObstacleField(flags.seed);
 const obstacleViews = createObstacleViews(game.scene);
-const audio = createAudioBus(flags.audio);
-const debug = createDebugOverlay(flags.debug);
+const audio = createAudioBus(flags.track);
+const debug = createDebugOverlay(flags.debug, () => {
+  const id = audio.cycleTrack();
+  console.info("[tempo-warp] track", id);
+});
+console.info("[tempo-warp] music", flags.track);
 const baseClear = new THREE.Color(tuning.clearColor);
 const flashClear = new THREE.Color(0x1a3048);
 const clearMix = new THREE.Color();
@@ -160,6 +164,7 @@ startLoop(
       obstacleCount: field.obstacles.length,
       densityTarget: densityAt(player.speed01),
       warp,
+      track: audio.track,
     });
 
     (window as unknown as { __tempo: unknown }).__tempo = {
@@ -174,6 +179,7 @@ startLoop(
       obstacleCount: field.obstacles.length,
       densityTarget: densityAt(player.speed01),
       warp,
+      track: audio.track,
     };
   },
 );

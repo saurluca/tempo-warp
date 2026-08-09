@@ -12,8 +12,10 @@ bunx vercel     # deploy this folder
 
 | Flag | Effect |
 |---|---|
-| `?debug=1` | FPS / throttle / obstacles overlay |
+| `?debug=1` | Overlay + clickable music track button |
 | `?seed=123` | Deterministic obstacle field |
-| `?audio=proc` | Brighter procedural audio bed |
+| `?track=neon\|drift\|surge` | Force a music track (else random on load) |
+
+**Music:** three beat tracks (NEON / DRIFT / SURGE). Layers and filter open with speed; shatter ducks to hush. In debug, click the ♪ button to cycle.
 
 **Play:** move pointer to aim · hold to spool throttle · release to coast · hit = shatter hush.

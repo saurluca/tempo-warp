@@ -1,11 +1,12 @@
-Tempo Warp audio (Phase 0)
-==========================
+Tempo Warp audio
+================
 
-All gameplay audio is currently synthesized at runtime with Tone.js
-(procedural oscillators / synths). No third-party sample packs are bundled yet.
+All gameplay music is synthesized at runtime with Tone.js (drums, bass, lead, pad).
+No third-party sample packs are bundled.
 
-Modes:
-  default (stems-style layered pads)  — soft sine / triangle layers + light delay
-  ?audio=proc                         — brighter, more synthetic bed
+Tracks (random on load, or ?track=):
+  neon   — four-on-the-floor drive (~128 BPM)
+  drift  — half-time glide (~92 BPM)
+  surge  — fast break energy (~142 BPM)
 
-When real CC stem files are added under this folder, list their licenses here.
+Debug (?debug=1): click the track button to cycle.
