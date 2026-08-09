@@ -1,0 +1,11 @@
+Tempo Warp audio (Phase 0)
+==========================
+
+All gameplay audio is currently synthesized at runtime with Tone.js
+(procedural oscillators / synths). No third-party sample packs are bundled yet.
+
+Modes:
+  default (stems-style layered pads)  — soft sine / triangle layers + light delay
+  ?audio=proc                         — brighter, more synthetic bed
+
+When real CC stem files are added under this folder, list their licenses here.

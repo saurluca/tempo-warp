@@ -21,7 +21,8 @@ Like a startup’s problem / solution / audience / money, a game needs a short s
 | **Hook** — What’s uniquely yours in 5 seconds? | You *are* the difficulty slider. No menus: speed / space / light tune challenge through play. |
 | **Win / lose / progress** | No traditional “levels.” Progress = deeper into denser / faster / darker zones; failure = snap back to a safe slow state, not a game-over screen. |
 | **Onboarding** | Zero text, zero prompts. Accidental discovery + organic gatekeepers teach rules by environment. |
-| **Feedback / UI** | Diegetic only: body deformation, color, blur, music richness = health, skill, danger. |
+| **Controls (v1)** | Pointer aim; **hold** spools throttle (car-like accel + coast on release). |
+| **Feedback / UI** | Diegetic only: body deformation, color, burst, music richness = health, skill, danger. |
 | **Target player** | People who liked *fl0w* / *Flower* / *Journey* / *THUMPER*-adjacent sensory games; players who hate tutorials and HUDs. |
 | **Comps** | *fl0w* (self-directed difficulty + diegetic body), plus modern “systems teach without words” design. |
 | **Scope / MVP** | One axis of S-DDA + one avatar feedback channel + one silent sandbox room that teaches the verb. |
@@ -93,8 +94,9 @@ Difficulty is not a menu setting. It is mapped to a physical axis the player can
 ## Decisions
 
 1. **Primary S-DDA axis (v1):** Velocity. Density / Light later.
-2. **Platform:** Web.
-3. **Still open:** Theme / fiction (deferred), session length, business model (tip jar / OST / cosmetics after demo).
+2. **Platform:** Web (Vite + Bun + Three.js + Tone.js → Vercel).
+3. **Style:** Neon, cool hush → warm surge; code-drawn primitives.
+4. **Still open:** Theme / fiction (deferred), session length, business model (tip jar / OST / cosmetics after demo).
 
 ---
 

@@ -1,3 +1,4 @@
+import * as THREE from "three";
 import { createAudioBus } from "./audio/bus";
 import { createDebugOverlay } from "./debug/overlay";
 import { readFlags } from "./flags";
@@ -12,6 +13,7 @@ import { colorForSpeed, emissiveForSpeed } from "./view/colors";
 import { createGroundWarp } from "./view/groundWarp";
 import { createObstacleViews } from "./view/obstaclesView";
 import { createGameScene } from "./view/scene";
+import { createShatterBurst } from "./view/shatterBurst";
 
 const flags = readFlags();
 console.info("[tempo-warp] boot", flags);
@@ -23,17 +25,22 @@ if (!host) {
 
 const game = createGameScene(host);
 const groundWarp = createGroundWarp(game.scene);
+const burst = createShatterBurst(game.scene);
 const pointer = createPointer(game.renderer.domElement, game.camera);
 const player = createPlayer();
 const field = createObstacleField(flags.seed);
 const obstacleViews = createObstacleViews(game.scene);
 const audio = createAudioBus(flags.audio);
 const debug = createDebugOverlay(flags.debug);
+const baseClear = new THREE.Color(tuning.clearColor);
+const flashClear = new THREE.Color(0x1a3048);
+const clearMix = new THREE.Color();
 
 let simTime = 0;
 let shatterCount = 0;
 let fpsSmooth = 60;
 let invuln = 0;
+let flashT = 0;
 
 const unlockOnce = () => {
   void audio.unlock();
@@ -68,6 +75,8 @@ startLoop(
       for (const o of field.obstacles) {
         if (playerHitsObstacle(player, o)) {
           hardShatter(player);
+          burst.trigger(player.x, player.z);
+          flashT = 0.22;
           shatterCount += 1;
           invuln = tuning.shatterInvuln;
           break;
@@ -75,6 +84,8 @@ startLoop(
       }
     }
 
+    burst.update(dt);
+    if (flashT > 0) flashT = Math.max(0, flashT - dt);
     audio.setFromSpeed(player.speed01, player.shatterT > 0);
   },
   (_alpha, dtReal) => {
@@ -85,24 +96,41 @@ startLoop(
     game.player.position.y = tuning.playerRadius;
 
     const speed = player.speed01;
-    const stretch =
-      1 + (tuning.stretchMax - 1) * Math.max(speed, player.throttle * 0.85);
+    const shattered = player.shatterT > 0;
+    const stretch = shattered
+      ? 0.75 + Math.sin(simTime * 40) * 0.08
+      : 1 + (tuning.stretchMax - 1) * Math.max(speed, player.throttle * 0.85);
     const yaw = Math.atan2(player.vx, player.vz || 0.0001);
     game.player.rotation.set(0, yaw, 0);
-    game.player.scale.set(1 / Math.sqrt(stretch), 1, stretch);
+    game.player.scale.set(
+      shattered ? 1.15 : 1 / Math.sqrt(stretch),
+      shattered ? 0.55 : 1,
+      shattered ? 1.15 : stretch,
+    );
 
-    const c = colorForSpeed(player.shatterT > 0 ? 0 : speed);
-    const e = emissiveForSpeed(player.shatterT > 0 ? 0 : speed);
+    const c = colorForSpeed(shattered ? 0 : speed);
+    const e = emissiveForSpeed(shattered ? 0 : speed);
     game.playerMat.color.copy(c);
     game.playerMat.emissive.copy(e);
-    game.playerMat.emissiveIntensity = player.shatterT > 0 ? 0.35 : 1.2 + speed * 1.1;
-    game.playerMat.opacity = player.shatterT > 0 ? 0.55 : 1;
-    game.playerMat.transparent = player.shatterT > 0;
-    game.playerMat.roughness = player.shatterT > 0 ? 0.85 : 0.25;
+    game.playerMat.emissiveIntensity = shattered ? 0.25 : 1.2 + speed * 1.1;
+    game.playerMat.opacity = shattered ? 0.4 : 1;
+    game.playerMat.transparent = shattered;
+    game.playerMat.roughness = shattered ? 0.9 : 0.25;
     game.ringMat.color.copy(c);
-    game.ringMat.opacity = player.shatterT > 0 ? 0.2 : 0.4 + speed * 0.4;
+    game.ringMat.opacity = shattered ? 0.12 : 0.4 + speed * 0.4;
 
-    const warp = player.shatterT > 0 ? 0 : warpAt(speed);
+    const flash = flashT / 0.22;
+    if (flash > 0) {
+      clearMix.copy(baseClear).lerp(flashClear, flash);
+      game.renderer.setClearColor(clearMix);
+    } else {
+      game.renderer.setClearColor(baseClear);
+    }
+    if (game.scene.fog instanceof THREE.FogExp2) {
+      game.scene.fog.density = 0.018 + (shattered ? 0.012 : 0) + speed * 0.004;
+    }
+
+    const warp = shattered ? 0 : warpAt(speed);
     groundWarp.setWarp(warp, simTime);
     groundWarp.follow(player.x, player.z);
 

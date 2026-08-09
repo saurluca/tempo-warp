@@ -1,101 +1,56 @@
-# Tempo Warp — Roadmap
+# Tempo Warp — Build roadmap
 
-Web-first. Prove the feel before adding theme, content, or secondary difficulty axes.
+Web-only feel demo. Host on Vercel from this folder. Use **Bun**.
 
-**Locked for v1:** Velocity as the S-DDA axis · zero HUD · zero text · browser target.
-
-See [BRIEF.md](./BRIEF.md) for design pillars and systems.
+Design source: [BRIEF.md](./BRIEF.md) · Practices: [DEV.md](./DEV.md)
 
 ---
 
-## Phase 0 — Vertical slice (this week)
+## Locked decisions
 
-Prove one sentence in the browser:
-
-> Boost → world + music intensify → hit → shatter into hush → recover.
-
-- [ ] Scaffold **Vite + TypeScript + Three.js** (or Pixi if flat 2D)
-- [ ] Fullscreen canvas, keyboard/pointer: move + boost
-- [ ] Player shape with velocity
-- [ ] Boost stretches shape and raises speed
-- [ ] Obstacles denser / harder as speed rises
-- [ ] On hit: velocity → ~0, music drops to hush stem
-- [ ] Slow zone stays safe until the player boosts again
-- [ ] Record a ~30s clip — if it feels like “I am the difficulty slider,” continue
-
-**Exit criteria:** Fun for you in a short loop. If not, retune — do not add content.
+| Topic | Choice |
+|---|---|
+| Dimension | 2.5D top-down (Three.js) |
+| Style | Neon wire / glow, cool hush → warm surge |
+| Graphics | Code primitives + light shaders |
+| Music | Tone.js layered bed; `?audio=proc` alternate |
+| Controls | Pointer chase; **hold** spools throttle (car-like coast) |
+| Obstacles | Sparse + large; density rises with speed |
+| Fail | Hard shatter → hush |
+| Deploy | `tempo-warp/` static Vite → Vercel |
 
 ---
 
-## Phase 1 — Silent onboarding
+## Phase 0 status
 
-Still no words, prompts, or button diagrams.
+**Done**
+- [x] Vite + Bun + Three.js + Tone.js scaffold
+- [x] Pointer aim + hold-to-throttle + coast
+- [x] `speed01` bus → color, stretch, warp, audio, spawns
+- [x] Seeded sparse obstacles + movers + ground warp
+- [x] Hard shatter + diegetic feedback + burst
+- [x] `?debug=1` · `?seed=` · `?audio=proc`
+- [x] Vitest for world curves + throttle feel
 
-- [ ] Enclosed safe sandbox at start
-- [ ] One reactive object that teaches the verb by accident
-- [ ] One organic gate that requires a short boost/commit to cross
-
-**Exit criteria:** A new player crosses the gate without asking what to do.
-
----
-
-## Phase 2 — Diegetic feedback
-
-- [ ] Health = shape integrity / color / softness (not a bar)
-- [ ] Flow = layered music (bass → melody → harmony with speed)
-- [ ] Hurt / fail = desaturate, soften, filter highs → hush / heartbeat
-
-**Exit criteria:** You can read state without any numbers or labels.
+**Next**
+- [ ] Vercel production deploy
+- [ ] Silent sandbox / organic gate (Phase 1)
+- [ ] Optional real CC stem files
 
 ---
 
-## Phase 3 — Playtest
+## Commands
 
-- [ ] 3–5 people, watch silently
-- [ ] Note every confusion; fix with environment, not tooltips
-- [ ] Trim anything that needs explanation
-
-**Exit criteria:** Someone plays ~5 minutes without asking “what do I do?”
-
----
-
-## Phase 4 — Public demo
-
-- [ ] Ship free web build (itch.io and/or own domain)
-- [ ] Optional tip jar
-- [ ] Collect one question: “Did you feel in control of difficulty?”
-
-**Exit criteria:** Link you can send; no account required to try.
+```bash
+bun install
+bun run dev      # http://127.0.0.1:5173
+bun test
+bun run build
+bunx vercel      # from tempo-warp/
+```
 
 ---
 
-## Phase 5 — After the feel is proven (later)
+## Out of scope until feel is proven
 
-Do **not** start these before Phase 3 passes.
-
-- [ ] Secondary S-DDA axis: Density and/or Light
-- [ ] Light theme / fiction (still no tutorial text)
-- [ ] Cosmetic packs / OST (monetization that doesn’t sell difficulty)
-- [ ] Mobile / touch controls pass
-- [ ] Performance pass (mid-tier laptops + phones)
-
----
-
-## Out of scope until later
-
-- Traditional levels / score chase as the main loop
-- Text tutorials, HUD, settings walls before first boost
-- Selling “easy mode” or pay-to-skip difficulty
-- Density/Light as primary before Velocity feels right
-
----
-
-## Suggested order of work (checklist)
-
-1. Scaffold web project  
-2. Boost / hush feel loop  
-3. Sandbox + organic gate  
-4. Body + audio as HUD  
-5. Playtest  
-6. Public demo  
-7. Only then: extra axes, theme, cosmetics  
+Density/Light axes, story, HUD/text tutorials, score chase, React shell, ads.
