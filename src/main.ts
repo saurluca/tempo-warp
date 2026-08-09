@@ -69,7 +69,14 @@ startLoop(
     if (invuln > 0) invuln = Math.max(0, invuln - dt);
 
     stepPlayer(player, dt, pointer.worldX, pointer.worldZ, pointer.boosting, pointer.active);
-    field.step(dt, simTime, player.x, player.z, player.speed01);
+    // Prefer velocity heading; fall back to aim so spawns load ahead of the camera
+    let hx = player.vx;
+    let hz = player.vz;
+    if (Math.hypot(hx, hz) < 0.4 && pointer.active) {
+      hx = pointer.worldX - player.x;
+      hz = pointer.worldZ - player.z;
+    }
+    field.step(dt, simTime, player.x, player.z, player.speed01, hx, hz);
 
     if (invuln <= 0 && player.shatterT <= 0) {
       for (const o of field.obstacles) {
@@ -127,7 +134,8 @@ startLoop(
       game.renderer.setClearColor(baseClear);
     }
     if (game.scene.fog instanceof THREE.FogExp2) {
-      game.scene.fog.density = 0.018 + (shattered ? 0.012 : 0) + speed * 0.004;
+      game.scene.fog.density =
+        tuning.fogDensity + (shattered ? 0.01 : 0) + speed * 0.002;
     }
 
     const warp = shattered ? 0 : warpAt(speed);

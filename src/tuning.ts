@@ -24,7 +24,7 @@ export const tuning = {
   /** Extra drag only used as soft speed limiter near max */
   speedLimitDrag: 1.8,
 
-  playerRadius: 0.55,
+  playerRadius: 0.42,
 
   /** Visual */
   hushColor: 0x3a6b8c,
@@ -34,9 +34,11 @@ export const tuning = {
   playerEmissiveSurge: 0xff6a1a,
   stretchMax: 1.85,
   warpMax: 1,
+  /** Lower = see farther; keep hazards readable before they reach you */
+  fogDensity: 0.008,
 
-  /** Camera */
-  cameraHeight: 36,
+  /** Camera — larger viewSize = wider overview (everything reads smaller) */
+  cameraHeight: 52,
   cameraLookOffset: 0,
   cameraFollow: 6,
 
@@ -47,19 +49,25 @@ export const tuning = {
   /** Audio */
   audioFilterOpen: 1400,
 
-  /** Sparse, larger obstacles */
+  /**
+   * Sparse obstacles — spawn OUTSIDE the visible ortho frame so they
+   * scroll into view with reaction time (not pop onto the player).
+   * With cameraHeight ~52, half-view ≈ 26; keep spawnRingMin above that.
+   */
   densityMin: 2,
   densityMax: 6,
-  spawnSpacingMax: 20,
-  spawnSpacingMin: 9,
-  spawnRingMin: 18,
-  spawnRingMax: 38,
-  clearBubble: 10,
-  cullRadius: 56,
-  safeRingCount: 2,
-  safeRingRadius: 14,
+  spawnSpacingMax: 22,
+  spawnSpacingMin: 10,
+  spawnRingMin: 44,
+  spawnRingMax: 72,
+  clearBubble: 14,
+  cullRadius: 90,
+  safeRingCount: 3,
+  safeRingRadius: 48,
+  /** Bias spawns into the travel/aim cone (0 = full ring, 1 = only ahead) */
+  spawnForwardBias: 0.72,
   moverChanceMin: 0.08,
   moverChanceMax: 0.35,
-  obstacleHalfMin: 1.15,
-  obstacleHalfMax: 2.6,
+  obstacleHalfMin: 0.85,
+  obstacleHalfMax: 1.9,
 } as const;

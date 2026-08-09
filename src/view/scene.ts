@@ -55,7 +55,7 @@ export function createGameScene(host: HTMLElement): GameScene {
   host.appendChild(renderer.domElement);
 
   const scene = new THREE.Scene();
-  scene.fog = new THREE.FogExp2(tuning.clearColor, 0.018);
+  scene.fog = new THREE.FogExp2(tuning.clearColor, tuning.fogDensity);
 
   const aspect = window.innerWidth / Math.max(window.innerHeight, 1);
   const viewSize = tuning.cameraHeight;

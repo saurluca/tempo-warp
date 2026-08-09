@@ -5,7 +5,15 @@ import { densityAt, moverChanceAt, spawnSpacingAt } from "./world";
 
 export interface ObstacleField {
   obstacles: Obstacle[];
-  step: (dt: number, time: number, px: number, pz: number, speed01: number) => void;
+  step: (
+    dt: number,
+    time: number,
+    px: number,
+    pz: number,
+    speed01: number,
+    headingX: number,
+    headingZ: number,
+  ) => void;
 }
 
 function makeObstacle(
@@ -26,7 +34,7 @@ function makeObstacle(
     baseZ: z,
     halfW,
     halfD,
-    moveAmp: moving ? 1.8 + rand() * 2.8 : 0,
+    moveAmp: moving ? 1.4 + rand() * 2.2 : 0,
     moveAxis: rand() > 0.5 ? "x" : "z",
     movePhase: rand() * Math.PI * 2,
     moveSpeed: 0.7 + rand() * 1.4,
@@ -35,16 +43,30 @@ function makeObstacle(
   };
 }
 
+function pickSpawnAngle(rand: () => number, headingX: number, headingZ: number): number {
+  const hLen = Math.hypot(headingX, headingZ);
+  if (hLen < 0.05 || tuning.spawnForwardBias <= 0) {
+    return rand() * Math.PI * 2;
+  }
+  const base = Math.atan2(headingZ, headingX);
+  // Cone ahead of travel; leftover chance for side spawns so the world isn't empty behind
+  if (rand() < tuning.spawnForwardBias) {
+    const halfCone = (Math.PI * 2) / 5; // ±36°
+    return base + (rand() * 2 - 1) * halfCone;
+  }
+  return rand() * Math.PI * 2;
+}
+
 export function createObstacleField(seed: number): ObstacleField {
   const rand = mulberry32(seed >>> 0);
   const obstacles: Obstacle[] = [];
   let nextId = 1;
   let spawnAcc = 0;
 
-  // Quiet opening: a few distant static pillars
+  // Preload far ring — already beyond typical first view
   for (let i = 0; i < tuning.safeRingCount; i++) {
-    const angle = (i / tuning.safeRingCount) * Math.PI * 2 + rand() * 0.3;
-    const dist = tuning.safeRingRadius + rand() * 4;
+    const angle = (i / tuning.safeRingCount) * Math.PI * 2 + rand() * 0.25;
+    const dist = tuning.safeRingRadius + rand() * 8;
     obstacles.push(
       makeObstacle(nextId++, Math.cos(angle) * dist, Math.sin(angle) * dist, rand, false),
     );
@@ -62,21 +84,25 @@ export function createObstacleField(seed: number): ObstacleField {
     }
   };
 
-  const trySpawn = (px: number, pz: number, speed01: number) => {
+  const trySpawn = (
+    px: number,
+    pz: number,
+    speed01: number,
+    headingX: number,
+    headingZ: number,
+  ) => {
     const target = Math.floor(densityAt(speed01));
     if (obstacles.length >= target) return;
 
     const dist = tuning.spawnRingMin + rand() * (tuning.spawnRingMax - tuning.spawnRingMin);
-    const angle = rand() * Math.PI * 2;
+    const angle = pickSpawnAngle(rand, headingX, headingZ);
     const x = px + Math.cos(angle) * dist;
     const z = pz + Math.sin(angle) * dist;
 
-    // Keep a clear bubble around the player
     if (Math.hypot(x - px, z - pz) < tuning.clearBubble) return;
 
-    // Avoid stacking on existing bases
     for (const o of obstacles) {
-      if (Math.hypot(o.baseX - x, o.baseZ - z) < 4.5) return;
+      if (Math.hypot(o.baseX - x, o.baseZ - z) < 5.5) return;
     }
 
     const moving = rand() < moverChanceAt(speed01);
@@ -85,20 +111,18 @@ export function createObstacleField(seed: number): ObstacleField {
 
   return {
     obstacles,
-    step(dt, time, px, pz, speed01) {
+    step(dt, time, px, pz, speed01, headingX, headingZ) {
       recycleOrCull(px, pz);
 
       const spacing = spawnSpacingAt(speed01);
-      // Advance spawn accumulator by player motion proxy (speed * dt)
       spawnAcc += Math.max(speed01, 0.08) * tuning.maxSpeed * dt;
       while (spawnAcc >= spacing) {
         spawnAcc -= spacing;
-        trySpawn(px, pz, speed01);
+        trySpawn(px, pz, speed01, headingX, headingZ);
       }
 
-      // Soft fill if too empty while boosting
       if (speed01 > 0.35 && obstacles.length < densityAt(speed01) * 0.7) {
-        trySpawn(px, pz, speed01);
+        trySpawn(px, pz, speed01, headingX, headingZ);
       }
 
       for (const o of obstacles) {
@@ -110,7 +134,6 @@ export function createObstacleField(seed: number): ObstacleField {
         }
         const phase = time * o.moveSpeed + o.movePhase;
         const wave = Math.sin(phase);
-        // Telegraph peaks near direction changes (|cos| high)
         o.telegraphT = Math.abs(Math.cos(phase));
         if (o.moveAxis === "x") {
           o.x = o.baseX + wave * o.moveAmp;
