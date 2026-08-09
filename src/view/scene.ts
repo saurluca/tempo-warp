@@ -1,6 +1,10 @@
 import * as THREE from "three";
 import { tuning } from "../tuning";
 
+const GROUND_PLANE = 120;
+const GROUND_REPEAT = 24;
+const GROUND_TILE = GROUND_PLANE / GROUND_REPEAT;
+
 export interface GameScene {
   renderer: THREE.WebGLRenderer;
   scene: THREE.Scene;
@@ -10,6 +14,8 @@ export interface GameScene {
   ringMat: THREE.MeshBasicMaterial;
   ground: THREE.Mesh;
   parallax: THREE.Mesh;
+  /** Mesh always under player; worldFixed scrolls the grid so it looks world-locked. */
+  placeGround: (x: number, z: number, worldFixed: boolean) => void;
   resize: () => void;
   followPlayer: (x: number, z: number, dt: number) => void;
   dispose: () => void;
@@ -42,7 +48,6 @@ function makeGridTexture(): THREE.CanvasTexture {
   const tex = new THREE.CanvasTexture(canvas);
   tex.wrapS = THREE.RepeatWrapping;
   tex.wrapT = THREE.RepeatWrapping;
-  tex.repeat.set(24, 24);
   tex.colorSpace = THREE.SRGBColorSpace;
   return tex;
 }
@@ -77,10 +82,12 @@ export function createGameScene(host: HTMLElement): GameScene {
   scene.add(ambient, key);
 
   // Underlay only — animated warp mesh sits above (groundWarp.ts)
+  const groundMap = makeGridTexture();
+  groundMap.repeat.set(GROUND_REPEAT, GROUND_REPEAT);
   const ground = new THREE.Mesh(
-    new THREE.PlaneGeometry(120, 120, 1, 1),
+    new THREE.PlaneGeometry(GROUND_PLANE, GROUND_PLANE, 1, 1),
     new THREE.MeshStandardMaterial({
-      map: makeGridTexture(),
+      map: groundMap,
       roughness: 0.95,
       metalness: 0.02,
       color: 0x445566,
@@ -104,6 +111,18 @@ export function createGameScene(host: HTMLElement): GameScene {
   parallax.rotation.x = -Math.PI / 2;
   parallax.position.y = -0.4;
   scene.add(parallax);
+
+  const placeGround = (x: number, z: number, worldFixed: boolean) => {
+    ground.position.x = x;
+    ground.position.z = z;
+    parallax.position.x = x * 0.85;
+    parallax.position.z = z * 0.85;
+    if (worldFixed) {
+      groundMap.offset.set(x / GROUND_TILE, -z / GROUND_TILE);
+    } else {
+      groundMap.offset.set(0, 0);
+    }
+  };
 
   const playerMat = new THREE.MeshStandardMaterial({
     color: tuning.hushColor,
@@ -167,6 +186,7 @@ export function createGameScene(host: HTMLElement): GameScene {
     ringMat,
     ground,
     parallax,
+    placeGround,
     resize,
     followPlayer,
     dispose: () => {

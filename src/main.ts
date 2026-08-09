@@ -12,6 +12,7 @@ import { tuning } from "./tuning";
 import { colorForSpeed, emissiveForSpeed } from "./view/colors";
 import { createGroundWarp } from "./view/groundWarp";
 import { createObstacleViews } from "./view/obstaclesView";
+import { createPlayerTail } from "./view/playerTail";
 import { createGameScene } from "./view/scene";
 import { createShatterBurst } from "./view/shatterBurst";
 
@@ -26,6 +27,7 @@ if (!host) {
 const game = createGameScene(host);
 const groundWarp = createGroundWarp(game.scene);
 const burst = createShatterBurst(game.scene);
+const tail = createPlayerTail(game.scene);
 const pointer = createPointer(game.renderer.domElement, game.camera);
 const player = createPlayer();
 const field = createObstacleField(flags.seed);
@@ -45,6 +47,36 @@ let shatterCount = 0;
 let fpsSmooth = 60;
 let invuln = 0;
 let flashT = 0;
+// ponytail: one boolean + button; no settings store
+let bgFollow = true;
+
+const bgBtn = document.createElement("button");
+bgBtn.type = "button";
+bgBtn.textContent = "BG: sticky";
+bgBtn.title = "Sticky = grid rides with you · World = endless fixed grid";
+bgBtn.style.cssText = [
+  "position:fixed",
+  "right:8px",
+  "top:8px",
+  "z-index:10",
+  "cursor:pointer",
+  "font:12px/1.2 monospace",
+  "color:#9ec9ff",
+  "background:#122033",
+  "border:1px solid #1a3048",
+  "padding:6px 10px",
+].join(";");
+const stopBoost = (e: Event) => {
+  e.preventDefault();
+  e.stopPropagation();
+};
+bgBtn.addEventListener("pointerdown", stopBoost);
+bgBtn.addEventListener("click", (e) => {
+  stopBoost(e);
+  bgFollow = !bgFollow;
+  bgBtn.textContent = bgFollow ? "BG: sticky" : "BG: world";
+});
+document.body.appendChild(bgBtn);
 
 const unlockOnce = () => {
   void audio.unlock();
@@ -150,14 +182,15 @@ startLoop(
 
     const warp = shattered ? 0 : warpAt(speed);
     groundWarp.setWarp(warp, simTime);
-    groundWarp.follow(player.x, player.z);
+    // Mesh always under you (endless); sticky vs world is just UV scroll
+    const worldFixed = !bgFollow;
+    groundWarp.follow(player.x, player.z, worldFixed);
+    game.placeGround(player.x, player.z, worldFixed);
+
+    tail.update(player.x, player.z, player.vx, player.vz, shattered ? 0 : speed);
 
     obstacleViews.sync(field.obstacles);
     game.followPlayer(player.x, player.z, dtReal);
-    game.ground.position.x = player.x;
-    game.ground.position.z = player.z;
-    game.parallax.position.x = player.x * 0.85;
-    game.parallax.position.z = player.z * 0.85;
 
     game.renderer.render(game.scene, game.camera);
     debug.update(player, fpsSmooth, {
