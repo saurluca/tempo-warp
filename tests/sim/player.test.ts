@@ -6,7 +6,8 @@ function hold(seconds: number, boosting: boolean) {
   const dt = 1 / 60;
   const steps = Math.round(seconds / dt);
   for (let i = 0; i < steps; i++) {
-    stepPlayer(p, dt, 40, 0, boosting, true);
+    // Aim ahead of the craft (same as real pointer chase), not a fixed world point
+    stepPlayer(p, dt, p.x + 40, p.z, boosting, true);
   }
   return p;
 }

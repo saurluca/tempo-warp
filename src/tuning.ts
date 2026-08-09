@@ -12,8 +12,13 @@ export const tuning = {
   throttleFall: 2.8,
   /** Engine push while throttling (world units / s² at full throttle) */
   engineAccel: 22,
-  /** Gentle steer while coasting / aiming without full gas */
-  steerAccel: 9,
+  /** Lateral / aim assist push (keeps turns lively without hard accel) */
+  steerAccel: 16,
+  /**
+   * How quickly velocity rotates toward aim (1/s). Higher = snappier turning
+   * without adding much forward speed.
+   */
+  turnAgility: 7.5,
   /** Low coast drag (1/s). Higher = stops sooner. Keep low for car glide. */
   coastDrag: 0.35,
   /** Extra drag only used as soft speed limiter near max */
