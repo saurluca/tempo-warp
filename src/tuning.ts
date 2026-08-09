@@ -1,11 +1,24 @@
 /** All feel numbers live here — never bury magic values in the render loop. */
 
 export const tuning = {
-  /** World units per second at speed01 = 1 */
-  maxSpeed: 28,
-  chaseAccel: 55,
-  boostAccelMult: 2.4,
-  drag: 3.2,
+  /** Top speed once throttle has fully spun up */
+  maxSpeed: 48,
+
+  /**
+   * Car-like throttle: hold click to spool up, release to coast.
+   * throttleRise ~ seconds toward full; throttleFall ~ seconds back to idle.
+   */
+  throttleRise: 1.35,
+  throttleFall: 2.4,
+  /** Engine push while throttling (world units / s² at full throttle) */
+  engineAccel: 38,
+  /** Gentle steer while coasting / aiming without full gas */
+  steerAccel: 14,
+  /** Low coast drag (1/s). Higher = stops sooner. Keep low for car glide. */
+  coastDrag: 0.35,
+  /** Extra drag only used as soft speed limiter near max */
+  speedLimitDrag: 1.8,
+
   playerRadius: 0.55,
 
   /** Visual */
@@ -14,32 +27,34 @@ export const tuning = {
   clearColor: 0x0a0e14,
   playerEmissiveHush: 0x1a3a55,
   playerEmissiveSurge: 0xff6a1a,
-  stretchMax: 1.65,
+  stretchMax: 1.85,
   warpMax: 1,
 
   /** Camera */
-  cameraHeight: 32,
+  cameraHeight: 36,
   cameraLookOffset: 0,
-  cameraFollow: 8,
+  cameraFollow: 6,
 
   /** Fail */
   shatterRecover: 0.55,
-  shatterInvuln: 0.35,
+  shatterInvuln: 0.4,
 
   /** Audio */
   audioFilterOpen: 1400,
 
-  /** Obstacle field — density is target count near player */
-  densityMin: 6,
-  densityMax: 42,
-  spawnSpacingMax: 7,
-  spawnSpacingMin: 1.6,
-  spawnRingMin: 12,
-  spawnRingMax: 26,
-  clearBubble: 5.5,
-  cullRadius: 40,
-  safeRingCount: 6,
-  safeRingRadius: 9,
-  moverChanceMin: 0.1,
-  moverChanceMax: 0.55,
+  /** Fewer, larger obstacles */
+  densityMin: 3,
+  densityMax: 12,
+  spawnSpacingMax: 14,
+  spawnSpacingMin: 5.5,
+  spawnRingMin: 16,
+  spawnRingMax: 34,
+  clearBubble: 8,
+  cullRadius: 52,
+  safeRingCount: 3,
+  safeRingRadius: 12,
+  moverChanceMin: 0.08,
+  moverChanceMax: 0.35,
+  obstacleHalfMin: 1.15,
+  obstacleHalfMax: 2.6,
 } as const;

@@ -85,7 +85,8 @@ startLoop(
     game.player.position.y = tuning.playerRadius;
 
     const speed = player.speed01;
-    const stretch = 1 + (tuning.stretchMax - 1) * speed * (player.boosting ? 1 : 0.5);
+    const stretch =
+      1 + (tuning.stretchMax - 1) * Math.max(speed, player.throttle * 0.85);
     const yaw = Math.atan2(player.vx, player.vz || 0.0001);
     game.player.rotation.set(0, yaw, 0);
     game.player.scale.set(1 / Math.sqrt(stretch), 1, stretch);
@@ -121,6 +122,7 @@ startLoop(
 
     (window as unknown as { __tempo: unknown }).__tempo = {
       speed01: player.speed01,
+      throttle: player.throttle,
       boosting: player.boosting,
       x: player.x,
       z: player.z,

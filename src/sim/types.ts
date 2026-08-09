@@ -9,6 +9,9 @@ export interface PlayerState {
   vx: number;
   vz: number;
   speed01: number;
+  /** 0..1 spool — rises while holding, falls slowly on release */
+  throttle: number;
+  /** True while primary is held (input), not the same as “going fast” */
   boosting: boolean;
   /** Seconds remaining of post-shatter soft look / invuln flash. */
   shatterT: number;

@@ -15,8 +15,9 @@ function makeObstacle(
   rand: () => number,
   moving: boolean,
 ): Obstacle {
-  const halfW = 0.4 + rand() * 0.7;
-  const halfD = 0.4 + rand() * 0.7;
+  const span = tuning.obstacleHalfMax - tuning.obstacleHalfMin;
+  const halfW = tuning.obstacleHalfMin + rand() * span;
+  const halfD = tuning.obstacleHalfMin + rand() * span;
   return {
     id,
     x,
@@ -25,7 +26,7 @@ function makeObstacle(
     baseZ: z,
     halfW,
     halfD,
-    moveAmp: moving ? 1.2 + rand() * 2.4 : 0,
+    moveAmp: moving ? 1.8 + rand() * 2.8 : 0,
     moveAxis: rand() > 0.5 ? "x" : "z",
     movePhase: rand() * Math.PI * 2,
     moveSpeed: 0.7 + rand() * 1.4,
@@ -75,7 +76,7 @@ export function createObstacleField(seed: number): ObstacleField {
 
     // Avoid stacking on existing bases
     for (const o of obstacles) {
-      if (Math.hypot(o.baseX - x, o.baseZ - z) < 2.2) return;
+      if (Math.hypot(o.baseX - x, o.baseZ - z) < 4.5) return;
     }
 
     const moving = rand() < moverChanceAt(speed01);

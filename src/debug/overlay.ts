@@ -24,7 +24,8 @@ export function createDebugOverlay(enabled: boolean) {
       el.textContent = [
         `fps ${fps.toFixed(0)}`,
         `speed01 ${p.speed01.toFixed(2)}`,
-        `boost ${p.boosting ? "ON" : "off"}`,
+        `throttle ${p.throttle.toFixed(2)}`,
+        `hold ${p.boosting ? "ON" : "off"}`,
         `pos ${p.x.toFixed(1)}, ${p.z.toFixed(1)}`,
         `shatterT ${p.shatterT.toFixed(2)}`,
         `obs ${extra.obstacleCount ?? "?"} / ${extra.densityTarget?.toFixed(0) ?? "?"}`,
