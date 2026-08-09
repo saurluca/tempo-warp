@@ -76,17 +76,20 @@ export function createGameScene(host: HTMLElement): GameScene {
   key.position.set(8, 20, -6);
   scene.add(ambient, key);
 
+  // Underlay only — animated warp mesh sits above (groundWarp.ts)
   const ground = new THREE.Mesh(
     new THREE.PlaneGeometry(120, 120, 1, 1),
     new THREE.MeshStandardMaterial({
       map: makeGridTexture(),
-      roughness: 0.92,
-      metalness: 0.05,
-      color: 0xffffff,
+      roughness: 0.95,
+      metalness: 0.02,
+      color: 0x445566,
+      transparent: true,
+      opacity: 0.35,
     }),
   );
   ground.rotation.x = -Math.PI / 2;
-  ground.position.y = 0;
+  ground.position.y = -0.02;
   scene.add(ground);
 
   const parallax = new THREE.Mesh(

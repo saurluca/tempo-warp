@@ -1,9 +1,15 @@
 import type { PlayerState } from "../sim/types";
 
+export interface DebugExtras {
+  obstacleCount?: number;
+  densityTarget?: number;
+  warp?: number;
+}
+
 export function createDebugOverlay(enabled: boolean) {
   if (!enabled) {
     return {
-      update: (_p: PlayerState, _fps: number) => {},
+      update: (_p: PlayerState, _fps: number, _extra?: DebugExtras) => {},
     };
   }
 
@@ -14,13 +20,15 @@ export function createDebugOverlay(enabled: boolean) {
   document.body.appendChild(el);
 
   return {
-    update(p: PlayerState, fps: number) {
+    update(p: PlayerState, fps: number, extra: DebugExtras = {}) {
       el.textContent = [
         `fps ${fps.toFixed(0)}`,
         `speed01 ${p.speed01.toFixed(2)}`,
         `boost ${p.boosting ? "ON" : "off"}`,
         `pos ${p.x.toFixed(1)}, ${p.z.toFixed(1)}`,
         `shatterT ${p.shatterT.toFixed(2)}`,
+        `obs ${extra.obstacleCount ?? "?"} / ${extra.densityTarget?.toFixed(0) ?? "?"}`,
+        `warp ${(extra.warp ?? 0).toFixed(2)}`,
       ].join("\n");
     },
   };

@@ -4,10 +4,12 @@ import { readFlags } from "./flags";
 import { createPointer } from "./input/pointer";
 import { startLoop } from "./loop";
 import { playerHitsObstacle } from "./sim/collide";
-import { spawnPlaceholders, stepObstacles } from "./sim/obstacles";
+import { createObstacleField } from "./sim/obstacles";
 import { createPlayer, hardShatter, stepPlayer } from "./sim/player";
+import { densityAt, warpAt } from "./sim/world";
 import { tuning } from "./tuning";
 import { colorForSpeed, emissiveForSpeed } from "./view/colors";
+import { createGroundWarp } from "./view/groundWarp";
 import { createObstacleViews } from "./view/obstaclesView";
 import { createGameScene } from "./view/scene";
 
@@ -20,9 +22,10 @@ if (!host) {
 }
 
 const game = createGameScene(host);
+const groundWarp = createGroundWarp(game.scene);
 const pointer = createPointer(game.renderer.domElement, game.camera);
 const player = createPlayer();
-const obstacles = spawnPlaceholders(flags.seed);
+const field = createObstacleField(flags.seed);
 const obstacleViews = createObstacleViews(game.scene);
 const audio = createAudioBus(flags.audio);
 const debug = createDebugOverlay(flags.debug);
@@ -32,14 +35,26 @@ let shatterCount = 0;
 let fpsSmooth = 60;
 let invuln = 0;
 
-// Unlock audio on first gesture (browser policy)
 const unlockOnce = () => {
   void audio.unlock();
   game.renderer.domElement.removeEventListener("pointerdown", unlockOnce);
 };
 game.renderer.domElement.addEventListener("pointerdown", unlockOnce);
 
-obstacleViews.sync(obstacles);
+obstacleViews.sync(field.obstacles);
+
+if (flags.debug) {
+  (window as unknown as { __tempoAim: (x: number, z: number, boosting: boolean) => void }).__tempoAim = (
+    x,
+    z,
+    boosting,
+  ) => {
+    pointer.worldX = x;
+    pointer.worldZ = z;
+    pointer.boosting = boosting;
+    pointer.active = true;
+  };
+}
 
 startLoop(
   (dt) => {
@@ -47,10 +62,10 @@ startLoop(
     if (invuln > 0) invuln = Math.max(0, invuln - dt);
 
     stepPlayer(player, dt, pointer.worldX, pointer.worldZ, pointer.boosting, pointer.active);
-    stepObstacles(obstacles, dt, simTime);
+    field.step(dt, simTime, player.x, player.z, player.speed01);
 
     if (invuln <= 0 && player.shatterT <= 0) {
-      for (const o of obstacles) {
+      for (const o of field.obstacles) {
         if (playerHitsObstacle(player, o)) {
           hardShatter(player);
           shatterCount += 1;
@@ -86,7 +101,11 @@ startLoop(
     game.ringMat.color.copy(c);
     game.ringMat.opacity = player.shatterT > 0 ? 0.2 : 0.4 + speed * 0.4;
 
-    obstacleViews.sync(obstacles);
+    const warp = player.shatterT > 0 ? 0 : warpAt(speed);
+    groundWarp.setWarp(warp, simTime);
+    groundWarp.follow(player.x, player.z);
+
+    obstacleViews.sync(field.obstacles);
     game.followPlayer(player.x, player.z, dtReal);
     game.ground.position.x = player.x;
     game.ground.position.z = player.z;
@@ -94,9 +113,12 @@ startLoop(
     game.parallax.position.z = player.z * 0.85;
 
     game.renderer.render(game.scene, game.camera);
-    debug.update(player, fpsSmooth);
+    debug.update(player, fpsSmooth, {
+      obstacleCount: field.obstacles.length,
+      densityTarget: densityAt(player.speed01),
+      warp,
+    });
 
-    // Probe surface for browser automation
     (window as unknown as { __tempo: unknown }).__tempo = {
       speed01: player.speed01,
       boosting: player.boosting,
@@ -105,6 +127,9 @@ startLoop(
       shatterCount,
       shatterT: player.shatterT,
       audioUnlocked: audio.unlocked,
+      obstacleCount: field.obstacles.length,
+      densityTarget: densityAt(player.speed01),
+      warp,
     };
   },
 );

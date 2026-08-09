@@ -34,11 +34,14 @@ export function createObstacleViews(scene: THREE.Scene): ObstacleViews {
       mesh.position.set(o.x, 0.7, o.z);
       const mat = mesh.material as THREE.MeshStandardMaterial;
       if (o.moving) {
-        mat.emissiveIntensity = 0.25 + o.telegraphT * 0.85;
-        mat.emissive.setHex(0xff6a3a);
+        // Bright pulse near turnarounds (telegraph)
+        mat.emissiveIntensity = 0.3 + o.telegraphT * 1.4;
+        mat.emissive.setHex(o.telegraphT > 0.75 ? 0xffdd66 : 0xff6a3a);
+        mesh.scale.setScalar(1 + o.telegraphT * 0.08);
       } else {
         mat.emissiveIntensity = 0.4;
         mat.emissive.setHex(0x3a6cff);
+        mesh.scale.setScalar(1);
       }
     }
 

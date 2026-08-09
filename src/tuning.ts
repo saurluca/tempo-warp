@@ -15,6 +15,7 @@ export const tuning = {
   playerEmissiveHush: 0x1a3a55,
   playerEmissiveSurge: 0xff6a1a,
   stretchMax: 1.65,
+  warpMax: 1,
 
   /** Camera */
   cameraHeight: 32,
@@ -28,6 +29,17 @@ export const tuning = {
   /** Audio */
   audioFilterOpen: 1400,
 
-  /** Placeholder until full obstacle system lands */
-  placeholderObstacleCount: 10,
+  /** Obstacle field — density is target count near player */
+  densityMin: 6,
+  densityMax: 42,
+  spawnSpacingMax: 7,
+  spawnSpacingMin: 1.6,
+  spawnRingMin: 12,
+  spawnRingMax: 26,
+  clearBubble: 5.5,
+  cullRadius: 40,
+  safeRingCount: 6,
+  safeRingRadius: 9,
+  moverChanceMin: 0.1,
+  moverChanceMax: 0.55,
 } as const;
