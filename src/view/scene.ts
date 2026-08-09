@@ -6,9 +6,12 @@ export interface GameScene {
   scene: THREE.Scene;
   camera: THREE.OrthographicCamera;
   player: THREE.Mesh;
+  playerMat: THREE.MeshStandardMaterial;
+  ringMat: THREE.MeshBasicMaterial;
   ground: THREE.Mesh;
   parallax: THREE.Mesh;
   resize: () => void;
+  followPlayer: (x: number, z: number, dt: number) => void;
   dispose: () => void;
 }
 
@@ -110,20 +113,23 @@ export function createGameScene(host: HTMLElement): GameScene {
   player.position.set(0, tuning.playerRadius, 0);
   scene.add(player);
 
-  // Soft neon ring under player for silhouette read
+  const ringMat = new THREE.MeshBasicMaterial({
+    color: tuning.hushColor,
+    transparent: true,
+    opacity: 0.55,
+    side: THREE.DoubleSide,
+    depthWrite: false,
+  });
   const ring = new THREE.Mesh(
     new THREE.RingGeometry(tuning.playerRadius * 1.15, tuning.playerRadius * 1.55, 32),
-    new THREE.MeshBasicMaterial({
-      color: tuning.hushColor,
-      transparent: true,
-      opacity: 0.55,
-      side: THREE.DoubleSide,
-      depthWrite: false,
-    }),
+    ringMat,
   );
   ring.rotation.x = -Math.PI / 2;
   ring.position.y = 0.02;
   player.add(ring);
+
+  let camX = 0;
+  let camZ = 0;
 
   const resize = () => {
     const w = window.innerWidth;
@@ -137,6 +143,15 @@ export function createGameScene(host: HTMLElement): GameScene {
     renderer.setSize(w, h, false);
   };
 
+  const followPlayer = (x: number, z: number, dt: number) => {
+    const k = 1 - Math.exp(-tuning.cameraFollow * dt);
+    camX += (x - camX) * k;
+    camZ += (z - camZ) * k;
+    camera.position.x = camX;
+    camera.position.z = camZ + 0.01;
+    camera.lookAt(camX, 0, camZ + tuning.cameraLookOffset);
+  };
+
   resize();
   window.addEventListener("resize", resize);
 
@@ -145,9 +160,12 @@ export function createGameScene(host: HTMLElement): GameScene {
     scene,
     camera,
     player,
+    playerMat,
+    ringMat,
     ground,
     parallax,
     resize,
+    followPlayer,
     dispose: () => {
       window.removeEventListener("resize", resize);
       renderer.dispose();

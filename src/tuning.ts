@@ -14,11 +14,20 @@ export const tuning = {
   clearColor: 0x0a0e14,
   playerEmissiveHush: 0x1a3a55,
   playerEmissiveSurge: 0xff6a1a,
+  stretchMax: 1.65,
 
   /** Camera */
   cameraHeight: 32,
   cameraLookOffset: 0,
+  cameraFollow: 8,
 
-  /** Placeholder until obstacle system lands */
-  placeholderObstacleCount: 8,
+  /** Fail */
+  shatterRecover: 0.55,
+  shatterInvuln: 0.35,
+
+  /** Audio */
+  audioFilterOpen: 1400,
+
+  /** Placeholder until full obstacle system lands */
+  placeholderObstacleCount: 10,
 } as const;
