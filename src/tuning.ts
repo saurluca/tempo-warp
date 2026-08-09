@@ -27,6 +27,11 @@ export const tuning = {
   playerRadius: 0.42,
   /** Collision smaller than glow so neon edges don't fake-hit */
   hitboxScale: 0.82,
+  /**
+   * If the pointer is this close to the craft, ignore aim and keep coasting
+   * on current velocity — prevents self-aim from cancelling all speed.
+   */
+  aimDeadzone: 1.35,
 
   /** Visual */
   hushColor: 0x3a6b8c,
@@ -44,9 +49,15 @@ export const tuning = {
   cameraLookOffset: 0,
   cameraFollow: 6,
 
-  /** Fail */
-  shatterRecover: 0.55,
-  shatterInvuln: 0.4,
+  /** Impact — knockback, not a hard freeze (keeps flow) */
+  shatterRecover: 0.45,
+  shatterInvuln: 0.55,
+  /** Keep this fraction of incoming speed as outward knockback */
+  impactSpeedKeep: 0.42,
+  /** Floor knockback so you never hard-stop to zero */
+  impactMinSpeed: 6,
+  /** Throttle left after a hit (spool not fully wiped) */
+  impactThrottleKeep: 0.2,
 
   /** Audio */
   audioFilterOpen: 1400,

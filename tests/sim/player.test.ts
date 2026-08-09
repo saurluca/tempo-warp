@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { createPlayer, stepPlayer } from "../../src/sim/player";
+import { applyImpact, createPlayer, stepPlayer } from "../../src/sim/player";
+import { tuning } from "../../src/tuning";
 
 function hold(seconds: number, boosting: boolean) {
   const p = createPlayer();
@@ -35,5 +36,24 @@ describe("car-like throttle", () => {
     expect(p.throttle).toBeLessThan(0.7);
     expect(p.speed01).toBeGreaterThan(0.25);
     expect(p.speed01).toBeGreaterThan(speedAtRelease * 0.35);
+  });
+
+  it("aiming on top of the craft does not cancel velocity", () => {
+    const p = hold(2.5, true);
+    const before = Math.hypot(p.vx, p.vz);
+    expect(before).toBeGreaterThan(5);
+    const dt = 1 / 60;
+    for (let i = 0; i < 45; i++) {
+      // pointer on the blob + still holding
+      stepPlayer(p, dt, p.x + 0.2, p.z - 0.1, true, true);
+    }
+    expect(Math.hypot(p.vx, p.vz)).toBeGreaterThan(before * 0.5);
+  });
+
+  it("impact knocks outward instead of freezing", () => {
+    const p = hold(2.5, true);
+    applyImpact(p, p.x - 1, p.z);
+    expect(Math.hypot(p.vx, p.vz)).toBeGreaterThanOrEqual(tuning.impactMinSpeed - 0.01);
+    expect(p.vx).toBeGreaterThan(0); // pushed away from obstacle on the left
   });
 });

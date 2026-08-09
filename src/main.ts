@@ -6,7 +6,7 @@ import { createPointer } from "./input/pointer";
 import { startLoop } from "./loop";
 import { playerHitsObstacle, playerOverlapsAny, separatePlayer } from "./sim/collide";
 import { createObstacleField } from "./sim/obstacles";
-import { createPlayer, hardShatter, stepPlayer } from "./sim/player";
+import { applyImpact, createPlayer, stepPlayer } from "./sim/player";
 import { densityAt, warpAt } from "./sim/world";
 import { tuning } from "./tuning";
 import { colorForSpeed, emissiveForSpeed } from "./view/colors";
@@ -90,7 +90,7 @@ startLoop(
     } else if (invuln <= 0 && player.shatterT <= 0) {
       for (const o of field.obstacles) {
         if (playerHitsObstacle(player, o)) {
-          hardShatter(player);
+          applyImpact(player, o.x, o.z);
           separatePlayer(player, field.obstacles);
           burst.trigger(player.x, player.z);
           flashT = 0.22;

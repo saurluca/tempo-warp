@@ -38,34 +38,40 @@ export function stepPlayer(
     p.throttle = Math.max(0, p.throttle - fall);
   }
 
+  const speed = Math.hypot(p.vx, p.vz);
   let nx = 0;
   let nz = 0;
+
   if (pointerActive) {
     const dx = targetX - p.x;
     const dz = targetZ - p.z;
-    const dist = Math.hypot(dx, dz);
-    if (dist > 0.001) {
-      nx = dx / dist;
-      nz = dz / dist;
+    const aimDist = Math.hypot(dx, dz);
+    // Critical: aiming on top of yourself used to cancel all velocity
+    if (aimDist > tuning.aimDeadzone) {
+      nx = dx / aimDist;
+      nz = dz / aimDist;
+    } else if (speed > 0.05) {
+      nx = p.vx / speed;
+      nz = p.vz / speed;
     }
-  } else if (Math.hypot(p.vx, p.vz) > 0.01) {
-    const sp = Math.hypot(p.vx, p.vz);
-    nx = p.vx / sp;
-    nz = p.vz / sp;
+  } else if (speed > 0.05) {
+    nx = p.vx / speed;
+    nz = p.vz / speed;
   }
 
   if (nx !== 0 || nz !== 0) {
-    const sp = Math.hypot(p.vx, p.vz);
-    if (sp > 0.05) {
-      const tx = nx * sp;
-      const tz = nz * sp;
+    if (speed > 0.05) {
+      const tx = nx * speed;
+      const tz = nz * speed;
       const k = 1 - Math.exp(-tuning.turnAgility * dt);
       p.vx += (tx - p.vx) * k;
       p.vz += (tz - p.vz) * k;
     }
 
-    const steer = tuning.steerAccel * (0.45 + 0.55 * Math.max(p.throttle, 0.25));
-    const engine = tuning.engineAccel * p.throttle;
+    // While recovering from impact, throttle push is weaker but not zero
+    const control = p.shatterT > 0 ? 0.35 : 1;
+    const steer = tuning.steerAccel * (0.45 + 0.55 * Math.max(p.throttle, 0.25)) * control;
+    const engine = tuning.engineAccel * p.throttle * control;
     const push = steer + engine;
     p.vx += nx * push * dt;
     p.vz += nz * push * dt;
@@ -75,9 +81,9 @@ export function stepPlayer(
   p.vx *= drag;
   p.vz *= drag;
 
-  const speed = Math.hypot(p.vx, p.vz);
-  if (speed > tuning.maxSpeed) {
-    const over = speed - tuning.maxSpeed;
+  const spd = Math.hypot(p.vx, p.vz);
+  if (spd > tuning.maxSpeed) {
+    const over = spd - tuning.maxSpeed;
     const brake = Math.exp(-tuning.speedLimitDrag * (1 + over * 0.05) * dt);
     p.vx *= brake;
     p.vz *= brake;
@@ -89,11 +95,25 @@ export function stepPlayer(
   p.speed01 = Math.min(1, Math.hypot(p.vx, p.vz) / tuning.maxSpeed);
 }
 
-export function hardShatter(p: PlayerState): void {
-  p.vx = 0;
-  p.vz = 0;
-  p.speed01 = 0;
-  p.throttle = 0;
+/** Soft impact: knock outward, keep moving — never freeze to a dead stop. */
+export function applyImpact(p: PlayerState, fromX: number, fromZ: number): void {
+  let dx = p.x - fromX;
+  let dz = p.z - fromZ;
+  let dist = Math.hypot(dx, dz);
+  if (dist < 1e-5) {
+    dx = 1;
+    dz = 0;
+    dist = 1;
+  }
+  const nx = dx / dist;
+  const nz = dz / dist;
+
+  const incoming = Math.hypot(p.vx, p.vz);
+  const keep = Math.max(tuning.impactMinSpeed, incoming * tuning.impactSpeedKeep);
+  p.vx = nx * keep;
+  p.vz = nz * keep;
+  p.throttle = Math.max(p.throttle * tuning.impactThrottleKeep, 0);
+  p.speed01 = Math.min(1, keep / tuning.maxSpeed);
   p.boosting = false;
   p.shatterT = tuning.shatterRecover;
   p.clearOfHazards = false;
