@@ -1,6 +1,6 @@
 import { mulberry32 } from "../rng";
 import { tuning } from "../tuning";
-import type { Obstacle } from "./types";
+import type { Obstacle, ObstacleKind } from "./types";
 import { densityAt, moverChanceAt, spawnSpacingAt } from "./world";
 
 export interface ObstacleField {
@@ -16,24 +16,47 @@ export interface ObstacleField {
   ) => void;
 }
 
+function pickKind(rand: () => number): ObstacleKind {
+  const r = rand();
+  if (r < 0.28) return "spire";
+  if (r < 0.5) return "monolith";
+  if (r < 0.74) return "ring";
+  return "shard";
+}
+
 function makeObstacle(
   id: number,
   x: number,
   z: number,
   rand: () => number,
   moving: boolean,
+  kind: ObstacleKind = pickKind(rand),
 ): Obstacle {
   const span = tuning.obstacleHalfMax - tuning.obstacleHalfMin;
-  const halfW = tuning.obstacleHalfMin + rand() * span;
-  const halfD = tuning.obstacleHalfMin + rand() * span;
+  const size = tuning.obstacleHalfMin + rand() * span;
+
+  // Tight solid cores (hitR) — visuals can be flashier/larger
+  let hitR = size * 0.72;
+  let hitInnerR = 0;
+  if (kind === "ring") {
+    hitR = size * 1.35;
+    hitInnerR = size * 0.7;
+  } else if (kind === "monolith") {
+    hitR = size * 0.55;
+  } else if (kind === "shard") {
+    hitR = size * 0.5;
+  }
+
   return {
     id,
+    kind,
     x,
     z,
+    size,
+    hitR,
+    hitInnerR,
     baseX: x,
     baseZ: z,
-    halfW,
-    halfD,
     moveAmp: moving ? 1.4 + rand() * 2.2 : 0,
     moveAxis: rand() > 0.5 ? "x" : "z",
     movePhase: rand() * Math.PI * 2,
@@ -49,9 +72,8 @@ function pickSpawnAngle(rand: () => number, headingX: number, headingZ: number):
     return rand() * Math.PI * 2;
   }
   const base = Math.atan2(headingZ, headingX);
-  // Cone ahead of travel; leftover chance for side spawns so the world isn't empty behind
   if (rand() < tuning.spawnForwardBias) {
-    const halfCone = (Math.PI * 2) / 5; // ±36°
+    const halfCone = (Math.PI * 2) / 5;
     return base + (rand() * 2 - 1) * halfCone;
   }
   return rand() * Math.PI * 2;
@@ -63,12 +85,20 @@ export function createObstacleField(seed: number): ObstacleField {
   let nextId = 1;
   let spawnAcc = 0;
 
-  // Preload far ring — already beyond typical first view
   for (let i = 0; i < tuning.safeRingCount; i++) {
     const angle = (i / tuning.safeRingCount) * Math.PI * 2 + rand() * 0.25;
     const dist = tuning.safeRingRadius + rand() * 8;
+    // Opening ring: readable solids, no rings (teach collision first)
+    const kind: ObstacleKind = rand() > 0.5 ? "spire" : "monolith";
     obstacles.push(
-      makeObstacle(nextId++, Math.cos(angle) * dist, Math.sin(angle) * dist, rand, false),
+      makeObstacle(
+        nextId++,
+        Math.cos(angle) * dist,
+        Math.sin(angle) * dist,
+        rand,
+        false,
+        kind,
+      ),
     );
   }
 

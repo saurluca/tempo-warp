@@ -4,7 +4,7 @@ import { createDebugOverlay } from "./debug/overlay";
 import { readFlags } from "./flags";
 import { createPointer } from "./input/pointer";
 import { startLoop } from "./loop";
-import { playerHitsObstacle } from "./sim/collide";
+import { playerHitsObstacle, playerOverlapsAny, separatePlayer } from "./sim/collide";
 import { createObstacleField } from "./sim/obstacles";
 import { createPlayer, hardShatter, stepPlayer } from "./sim/player";
 import { densityAt, warpAt } from "./sim/world";
@@ -78,10 +78,16 @@ startLoop(
     }
     field.step(dt, simTime, player.x, player.z, player.speed01, hx, hz);
 
-    if (invuln <= 0 && player.shatterT <= 0) {
+    // Latch: after a hit, ignore collisions until fully clear (fixes ghost re-stops)
+    if (!player.clearOfHazards) {
+      if (!playerOverlapsAny(player, field.obstacles)) {
+        player.clearOfHazards = true;
+      }
+    } else if (invuln <= 0 && player.shatterT <= 0) {
       for (const o of field.obstacles) {
         if (playerHitsObstacle(player, o)) {
           hardShatter(player);
+          separatePlayer(player, field.obstacles);
           burst.trigger(player.x, player.z);
           flashT = 0.22;
           shatterCount += 1;

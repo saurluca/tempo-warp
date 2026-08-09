@@ -25,6 +25,8 @@ export const tuning = {
   speedLimitDrag: 1.8,
 
   playerRadius: 0.42,
+  /** Collision smaller than glow so neon edges don't fake-hit */
+  hitboxScale: 0.82,
 
   /** Visual */
   hushColor: 0x3a6b8c,

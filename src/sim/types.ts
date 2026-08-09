@@ -15,14 +15,26 @@ export interface PlayerState {
   boosting: boolean;
   /** Seconds remaining of post-shatter soft look / invuln flash. */
   shatterT: number;
+  /**
+   * After a hit, ignore collisions until the player is fully clear of all
+   * hazards — prevents “stopped on nothing” re-shatters while overlapping.
+   */
+  clearOfHazards: boolean;
 }
+
+export type ObstacleKind = "spire" | "monolith" | "ring" | "shard";
 
 export interface Obstacle {
   id: number;
+  kind: ObstacleKind;
   x: number;
   z: number;
-  halfW: number;
-  halfD: number;
+  /** Visual / placement scale */
+  size: number;
+  /** Collision radius (circle) or ring outer radius */
+  hitR: number;
+  /** Ring inner radius (pass-through hole); 0 for solid kinds */
+  hitInnerR: number;
   /** Moving obstacles: amplitude along axis */
   moveAmp: number;
   moveAxis: "x" | "z";
