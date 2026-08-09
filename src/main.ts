@@ -92,10 +92,7 @@ if (flags.debug) {
     z,
     boosting,
   ) => {
-    pointer.worldX = x;
-    pointer.worldZ = z;
-    pointer.boosting = boosting;
-    pointer.active = true;
+    pointer.setWorldAim(x, z, boosting);
   };
 }
 
@@ -103,6 +100,11 @@ startLoop(
   (dt) => {
     simTime += dt;
     if (invuln > 0) invuln = Math.max(0, invuln - dt);
+
+    // Still mouse must not freeze a world aim point behind the craft
+    const halfW = (game.camera.right - game.camera.left) * 0.5;
+    const halfH = (game.camera.top - game.camera.bottom) * 0.5;
+    pointer.syncFromPlayer(player.x, player.z, halfW, halfH);
 
     stepPlayer(player, dt, pointer.worldX, pointer.worldZ, pointer.boosting, pointer.active);
     // Prefer velocity heading; fall back to aim so spawns load ahead of the camera

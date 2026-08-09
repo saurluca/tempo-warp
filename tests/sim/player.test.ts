@@ -50,6 +50,34 @@ describe("car-like throttle", () => {
     expect(Math.hypot(p.vx, p.vz)).toBeGreaterThan(before * 0.5);
   });
 
+  it("near-cursor aim orbit does not dump speed", () => {
+    const p = hold(2.5, true);
+    const before = Math.hypot(p.vx, p.vz);
+    expect(before).toBeGreaterThan(5);
+    const dt = 1 / 60;
+    const r = tuning.aimDeadzone + 0.4;
+    for (let i = 0; i < 90; i++) {
+      const a = i * 0.35;
+      stepPlayer(p, dt, p.x + Math.cos(a) * r, p.z + Math.sin(a) * r, true, true);
+    }
+    // Soft zone used to let this fall to ~5% of speed
+    expect(Math.hypot(p.vx, p.vz)).toBeGreaterThan(before * 0.55);
+  });
+
+  it("aim fixed behind the craft does not reverse-thrust dump speed", () => {
+    const p = hold(2.5, true);
+    const before = Math.hypot(p.vx, p.vz);
+    expect(before).toBeGreaterThan(5);
+    const dt = 1 / 60;
+    // Stale mouse: world aim stays behind while craft keeps moving
+    const aimX = p.x - 5;
+    const aimZ = p.z;
+    for (let i = 0; i < 90; i++) {
+      stepPlayer(p, dt, aimX, aimZ, true, true);
+    }
+    expect(Math.hypot(p.vx, p.vz)).toBeGreaterThan(before * 0.55);
+  });
+
   it("impact knocks outward instead of freezing", () => {
     const p = hold(2.5, true);
     applyImpact(p, p.x - 1, p.z);

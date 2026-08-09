@@ -32,6 +32,11 @@ export const tuning = {
    * on current velocity — prevents self-aim from cancelling all speed.
    */
   aimDeadzone: 1.35,
+  /**
+   * Beyond the deadzone, blend from velocity heading → full aim over this
+   * distance. Stops near-cursor orbit from reverse-accel dumping speed.
+   */
+  aimSoftZone: 3.5,
 
   /** Visual */
   hushColor: 0x3a6b8c,
