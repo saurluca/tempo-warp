@@ -29,8 +29,8 @@ export interface PlayerBlob {
 export function cometTailBehind(speed01: number): number {
   const R = tuning.blobRadius;
   const drop = speed01 * speed01 * (3 - 2 * speed01);
-  const tailLen = R * (0.68 + speed01 * 1.95);
-  return R + tailLen * drop - 0.22;
+  const tailLen = R * (0.5 + speed01 * 1.25);
+  return R + tailLen * drop - 1.05;
 }
 
 function writeComet(
@@ -42,7 +42,7 @@ function writeComet(
   const R = tuning.blobRadius * scale;
   const s01 = visualSpeed;
   const drop = s01 * s01 * (3 - 2 * s01);
-  const tailLen = R * (0.68 + s01 * 1.95);
+  const tailLen = R * (0.5 + s01 * 1.25);
 
   positions[0] = 0;
   positions[1] = 0;
@@ -55,8 +55,8 @@ function writeComet(
     const o = (1 + i) * 3;
     const breathe = 1 + Math.sin(wobble * 1.7 + t * 2) * (0.03 + s01 * 0.025);
     const u = (1 - c) * 0.5;
-    const pinch = Math.pow(u, 1.45) * drop;
-    const halfW = R * Math.abs(s) * (1 - pinch * 0.72) * (1 - s01 * 0.1) * breathe;
+    const pinch = Math.pow(u, 0.9) * drop;
+    const halfW = R * Math.abs(s) * (1 - pinch * 0.88) * (1 - s01 * 0.1) * breathe;
     positions[o] = (s < 0 ? -1 : 1) * halfW;
     positions[o + 1] = 0;
     positions[o + 2] = c * R * breathe - tailLen * u * u * drop;

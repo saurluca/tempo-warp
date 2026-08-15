@@ -148,6 +148,7 @@ export function createStars(scene: THREE.Scene): StarField {
   let drip = 0;
   let cursor = 0;
   let trailCursor = 0;
+  let trailCount = 0;
   let trailAcc = 0;
   let lastPx = 0;
   let lastPz = 0;
@@ -206,7 +207,9 @@ export function createStars(scene: THREE.Scene): StarField {
 
   const resetTrail = () => {
     trailCursor = 0;
+    trailCount = 0;
     trailAcc = 0;
+    haveTrail = false;
     for (let i = AMBIENT; i < MAX; i++) {
       ages[i] = 99;
       lives[i] = 1;
@@ -222,13 +225,21 @@ export function createStars(scene: THREE.Scene): StarField {
     ages[i] = 0;
     lives[i] = 3.6;
     sizes[i] = 0;
+    trailCount = Math.min(TRAIL, trailCount + 1);
   };
 
   const stitchRibbon = () => {
     let px = 0;
     let pz = 0;
     let have = false;
+    const n = Math.min(trailCount, TRAIL);
     for (let s = 0; s < TRAIL; s++) {
+      const v = s * 2;
+      if (s >= n) {
+        ribCol[v * 4 + 3] = 0;
+        ribCol[(v + 1) * 4 + 3] = 0;
+        continue;
+      }
       const i = AMBIENT + ((trailCursor - 1 - s + TRAIL * 8) % TRAIL);
       const fade = Math.max(0, 1 - ages[i]! / Math.max(lives[i]!, 0.001));
       const x = positions[i * 3]!;
@@ -248,7 +259,6 @@ export function createStars(scene: THREE.Scene): StarField {
       px = x;
       pz = z;
       have = fade > 0.01;
-      const v = s * 2;
       ribPos[v * 3] = x - sx;
       ribPos[v * 3 + 1] = 0.12;
       ribPos[v * 3 + 2] = z - sz;
@@ -280,7 +290,11 @@ export function createStars(scene: THREE.Scene): StarField {
       const hx = spd > 0.05 ? vx / spd : 0;
       const hz = spd > 0.05 ? vz / spd : 0;
 
-      if (atMax && !wasMax) resetTrail();
+      if (atMax && !wasMax) {
+        resetTrail();
+        lastPx = px;
+        lastPz = pz;
+      }
       wasMax = atMax;
 
       if (atMax) {
@@ -292,10 +306,12 @@ export function createStars(scene: THREE.Scene): StarField {
           drip = 0;
           spawn(cx, cz, halfW, halfH, hx, hz, burst, cap);
         }
-        const dist = haveTrail ? Math.hypot(px - lastPx, pz - lastPz) : TRAIL_STEP;
+        const dist = haveTrail ? Math.hypot(px - lastPx, pz - lastPz) : 0;
         trailAcc += dist;
-        while (trailAcc >= TRAIL_STEP && (hx !== 0 || hz !== 0)) {
+        let drops = 0;
+        while (trailAcc >= TRAIL_STEP && drops < 3 && (hx !== 0 || hz !== 0)) {
           trailAcc -= TRAIL_STEP;
+          drops += 1;
           const t = dist > 1e-5 ? 1 - trailAcc / dist : 1;
           dropTrail(lastPx + (px - lastPx) * t, lastPz + (pz - lastPz) * t, hx, hz, speed01);
         }
