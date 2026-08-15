@@ -1,4 +1,5 @@
 import { tuning } from "../tuning";
+import type { PlayerState } from "./types";
 
 const clamp01 = (t: number) => Math.min(1, Math.max(0, t));
 
@@ -9,6 +10,46 @@ export function radiusOf(x: number, z: number): number {
 /** 0 at origin, 1 at the sanctuary rim. */
 export function radius01At(radius: number): number {
   return clamp01(radius / tuning.sanctuaryRadius);
+}
+
+/** 0..1 — peaks on a band edge, dies outside currentWidth. */
+export function currentStrength(radius: number): number {
+  let best = 0;
+  for (const edge of tuning.bandEdges) {
+    const t = 1 - Math.abs(radius - edge) / tuning.currentWidth;
+    if (t > best) best = t;
+  }
+  return Math.max(0, best);
+}
+
+/** Carry the fast outward; shove the slow back. Homebound traffic is left alone. */
+export function applyCurrent(p: PlayerState, dt: number): void {
+  if (p.shatterT > 0) return;
+  const r = Math.hypot(p.x, p.z);
+  const c = currentStrength(r);
+  if (c <= 0 || r < 1e-3) return;
+
+  const rx = p.x / r;
+  const rz = p.z / r;
+  const spd = Math.hypot(p.vx, p.vz);
+  const outward = spd > 0.05 ? (p.vx * rx + p.vz * rz) / spd : 0;
+
+  let a = 0;
+  if (p.speed01 >= tuning.currentRideSpeed && outward > 0.15) {
+    a = tuning.currentCarry;
+  } else if (outward > 0 && p.speed01 < tuning.currentRideSpeed) {
+    a = -tuning.currentSlip;
+  }
+  if (a === 0) return;
+
+  p.vx += rx * a * c * dt;
+  p.vz += rz * a * c * dt;
+  const n = Math.hypot(p.vx, p.vz);
+  if (n > tuning.maxSpeed) {
+    p.vx *= tuning.maxSpeed / n;
+    p.vz *= tuning.maxSpeed / n;
+  }
+  p.speed01 = Math.min(1, n / tuning.maxSpeed);
 }
 
 /** 0 hush … 4 sanctuary */

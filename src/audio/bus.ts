@@ -7,6 +7,8 @@ export interface AudioBus {
   muted: boolean;
   track: TrackId;
   musicHold: number;
+  /** Stem-open curve — resets on a DJ spin so the new song builds again. */
+  arrange01: number;
   kick: number;
   snare: number;
   hat: number;
@@ -17,6 +19,8 @@ export interface AudioBus {
   setMuted: (m: boolean) => void;
   setTrack: (id: TrackId) => void;
   cycleTrack: () => TrackId;
+  /** Crossfade into the next track; incoming starts at the hush bed. */
+  spinNext: () => TrackId;
 }
 
 /**
@@ -28,12 +32,18 @@ export function createAudioBus(initialTrack: TrackId): AudioBus {
   let muted = false;
   let trackId: TrackId = initialTrack;
   let speed01 = 0;
-  let radius01 = 0;
   /** Always a hush bed — never start (or decay) to silence. */
   const hushBed = 0.24;
   let musicHold = hushBed;
+  let arrange01 = hushBed;
   let shattered = false;
   let lastShattered = false;
+  /** idle | ducking outgoing | opening incoming */
+  let spin: "idle" | "out" | "in" = "idle";
+  let pendingTrack: TrackId | null = null;
+  let mixOut = 0;
+  /** After a spin, climb stems instead of snapping to musicHold. */
+  let catching = false;
 
   const master = new Tone.Gain(0).toDestination();
   const duck = new Tone.Gain(1);
@@ -125,10 +135,10 @@ export function createAudioBus(initialTrack: TrackId): AudioBus {
   const applyMix = () => {
     if (!unlocked || muted) return;
     const s = shattered ? 0 : speed01;
-    const h = shattered ? musicHold * 0.35 : musicHold;
-    const duckAmt = shattered ? 0.12 : 1;
+    const h = shattered ? arrange01 * 0.35 : arrange01;
+    const duckAmt = (shattered ? 0.12 : 1) * (1 - mixOut * 0.72);
 
-    duck.gain.rampTo(duckAmt, 0.08);
+    duck.gain.rampTo(duckAmt, 0.1);
 
     const kickOn = h > 0.12;
     const snareOn = h > 0.28;
@@ -146,14 +156,15 @@ export function createAudioBus(initialTrack: TrackId): AudioBus {
     padGain.gain.rampTo(shattered ? 0.18 : 0.16 + (1 - s) * 0.1 + h * 0.06, 0.2);
     resolveGain.gain.rampTo(0, 0.2);
 
-    mixFilter.frequency.rampTo(shattered ? 280 : 1100 + s * 4400 + h * 400, 0.18);
+    const open = shattered ? 280 : 1100 + s * 4400 + h * 400;
+    mixFilter.frequency.rampTo(open * (1 - mixOut * 0.55), 0.18);
     padFilter.frequency.rampTo(320 + s * 900 + h * 200, 0.25);
 
     const def = TRACKS[trackId];
-    Tone.Transport.bpm.rampTo(def.bpm * (1 + s * 0.05), 0.45);
+    Tone.Transport.bpm.rampTo(def.bpm * (1 + s * 0.05), 0.8);
     const padHz = Tone.Frequency(def.pad).toFrequency();
-    pad.frequency.rampTo(padHz * (1 + h * 0.28), 0.5);
-    resolve.frequency.rampTo(padHz * 1.5, 0.6);
+    pad.frequency.rampTo(padHz * (1 + h * 0.28), 0.7);
+    resolve.frequency.rampTo(padHz * 1.5, 0.8);
   };
 
   const buildLoop = (id: TrackId) => {
@@ -163,7 +174,9 @@ export function createAudioBus(initialTrack: TrackId): AudioBus {
       loop = null;
     }
 
-    Tone.Transport.bpm.value = def.bpm;
+    if (Tone.Transport.state !== "started") {
+      Tone.Transport.bpm.value = def.bpm;
+    }
     pad.frequency.value = def.pad;
 
     const steps = def.kick.map((_, i) => i);
@@ -171,7 +184,7 @@ export function createAudioBus(initialTrack: TrackId): AudioBus {
       (time, step) => {
         const i = step as number;
         const s = speed01;
-        const h = musicHold;
+        const h = arrange01;
         if (shattered) return;
 
         if (h > 0.12 && def.kick[i]) {
@@ -219,6 +232,9 @@ export function createAudioBus(initialTrack: TrackId): AudioBus {
     get musicHold() {
       return musicHold;
     },
+    get arrange01() {
+      return arrange01;
+    },
     get kick() {
       return kickPulse;
     },
@@ -264,14 +280,45 @@ export function createAudioBus(initialTrack: TrackId): AudioBus {
       bus.setTrack(n);
       return n;
     },
+    spinNext() {
+      if (spin !== "idle") return trackId;
+      pendingTrack = nextTrack(trackId);
+      spin = "out";
+      return pendingTrack;
+    },
     setFromPlay(s: number, r01: number, isShattered: boolean, dt: number) {
       speed01 = s;
-      radius01 = r01;
       if (r01 > musicHold) musicHold = r01;
       else {
         const decay = isShattered ? tuning.musicHoldDecayShatter : tuning.musicHoldDecay;
         musicHold = Math.max(hushBed, r01, musicHold - decay * dt);
       }
+
+      if (spin === "out") {
+        mixOut = Math.min(1, mixOut + dt / Math.max(0.05, tuning.djFadeOut));
+        if (mixOut >= 1 && pendingTrack) {
+          trackId = pendingTrack;
+          pendingTrack = null;
+          arrange01 = hushBed;
+          catching = true;
+          if (unlocked) buildLoop(trackId);
+          spin = "in";
+        }
+      } else if (spin === "in") {
+        mixOut = Math.max(0, mixOut - dt / Math.max(0.05, tuning.djFadeIn));
+        if (mixOut <= 0) spin = "idle";
+      }
+
+      // First song follows musicHold; a DJ'd song rebuilds stems from the bed.
+      if (spin !== "out") {
+        if (catching) {
+          arrange01 = Math.min(musicHold, arrange01 + tuning.arrangeRise * dt);
+          if (arrange01 >= musicHold - 1e-4) catching = false;
+        } else {
+          arrange01 = musicHold;
+        }
+      }
+
       shattered = isShattered;
 
       if (!unlocked || muted) return;

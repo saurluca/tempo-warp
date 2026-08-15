@@ -7,9 +7,10 @@ import { startLoop } from "./loop";
 import { playerHitsObstacle, playerOverlapsAny, separatePlayer } from "./sim/collide";
 import { createObstacleField } from "./sim/obstacles";
 import { applyImpact, createPlayer, stepPlayer } from "./sim/player";
-import { densityAt, radius01At, radiusOf, warpAt } from "./sim/world";
+import { applyCurrent, bandAt, currentStrength, densityAt, radius01At, radiusOf, warpAt } from "./sim/world";
 import { tuning } from "./tuning";
 import { clearForRadius, colorForRadius } from "./view/colors";
+import { createBeatWave } from "./view/beatWave";
 import { createGroundWarp } from "./view/groundWarp";
 import { createLandmarks } from "./view/landmarks";
 import { createObstacleViews } from "./view/obstaclesView";
@@ -27,6 +28,10 @@ if (!host) {
 
 const game = createGameScene(host);
 const groundWarp = createGroundWarp(game.scene);
+const beatWave = createBeatWave(game.scene);
+const beatMode = (flags.seed >>> 0) % 2 === 0 ? "rings" : "wave";
+beatWave.setActive(beatMode === "wave");
+console.info("[tempo-warp] beat", beatMode);
 const burst = createShatterBurst(game.scene);
 const craft = createPlayerBlob(game.scene);
 createLandmarks(game.scene);
@@ -58,6 +63,7 @@ let shatterCount = 0;
 let fpsSmooth = 60;
 let invuln = 0;
 let flashT = 0;
+let lastBand = 0;
 // ponytail: one boolean + button; no settings store
 let bgFollow = false;
 
@@ -118,6 +124,7 @@ startLoop(
     pointer.syncFromPlayer(player.x, player.z, halfW, halfH);
 
     stepPlayer(player, dt, pointer.worldX, pointer.worldZ, pointer.boosting, pointer.active);
+    applyCurrent(player, dt);
     // Prefer velocity heading; fall back to aim so spawns load ahead of the camera
     let hx = player.vx;
     let hz = player.vz;
@@ -149,6 +156,11 @@ startLoop(
     burst.update(dt);
     if (flashT > 0) flashT = Math.max(0, flashT - dt);
     const radius = radiusOf(player.x, player.z);
+    const band = bandAt(radius);
+    if (band > lastBand && player.speed01 >= tuning.currentRideSpeed && player.shatterT <= 0) {
+      console.info("[tempo-warp] spin", audio.spinNext());
+    }
+    lastBand = band;
     audio.setFromPlay(player.speed01, radius01At(radius), player.shatterT > 0, dt);
   },
   (_alpha, dtReal) => {
@@ -184,11 +196,27 @@ startLoop(
         tuning.fogDensity + (shattered ? 0.01 : 0) + speed * 0.002;
     }
 
-    const warp = shattered ? 0 : warpAt(speed, radius);
+    const current = currentStrength(radius);
+    const warp = shattered ? 0 : warpAt(speed, radius) + current * 0.22;
     groundWarp.setBand(colorForRadius(radius));
     groundWarp.setWarp(warp, audio.unlocked ? audio.beatPhase : simTime);
-    const beatLines = audio.musicHold < 0.4 ? 1 : audio.musicHold < 0.7 ? 2 : 3;
+    const hold = audio.arrange01;
+    const beatLines =
+      beatMode === "rings" ? (hold < 0.4 ? 1 : hold < 0.7 ? 2 : 3) + (current > 0.35 ? 1 : 0) : 0;
     groundWarp.setBeat(audio.kick, audio.snare, audio.hat, beatLines, dtReal);
+    const halfW = (game.camera.right - game.camera.left) * 0.5;
+    beatWave.update(
+      player.x,
+      player.z,
+      halfW,
+      audio.kick,
+      audio.snare,
+      audio.hat,
+      audio.beatPhase,
+      speed,
+      radius,
+      dtReal,
+    );
     // Mesh always under you (endless); sticky vs world is just UV scroll
     const worldFixed = !bgFollow;
     groundWarp.follow(player.x, player.z, worldFixed);
@@ -205,6 +233,8 @@ startLoop(
       track: audio.track,
       radius01: radius01At(radius),
       musicHold: audio.musicHold,
+      arrange01: audio.arrange01,
+      beatMode,
     });
 
     (window as unknown as { __tempo: unknown }).__tempo = {
@@ -222,6 +252,8 @@ startLoop(
       track: audio.track,
       radius01: radius01At(radius),
       musicHold: audio.musicHold,
+      arrange01: audio.arrange01,
+      beatMode,
     };
   },
 );

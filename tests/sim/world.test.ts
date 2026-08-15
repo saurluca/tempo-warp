@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
+  applyCurrent,
   bandAt,
+  currentStrength,
   densityAt,
   inwardBandRadius,
   moverChanceAt,
@@ -8,6 +10,7 @@ import {
   spawnSpacingAt,
   warpAt,
 } from "../../src/sim/world";
+import { createPlayer } from "../../src/sim/player";
 import { tuning } from "../../src/tuning";
 
 describe("world curves", () => {
@@ -62,5 +65,38 @@ describe("world curves", () => {
   it("warp still works far from origin", () => {
     expect(warpAt(1, tuning.sanctuaryRadius)).toBeGreaterThan(0);
     expect(warpAt(1, 0)).toBeGreaterThan(0);
+  });
+
+  it("current peaks on a band edge and dies away from it", () => {
+    expect(currentStrength(tuning.bandEdges[0]!)).toBeCloseTo(1);
+    expect(currentStrength(0)).toBe(0);
+    expect(currentStrength(tuning.bandEdges[0]! + tuning.currentWidth + 20)).toBe(0);
+  });
+
+  it("current carries the fast out and slips the slow back", () => {
+    const edge = tuning.bandEdges[0]!;
+    const slow = createPlayer();
+    slow.x = edge;
+    slow.vx = tuning.maxSpeed * 0.25;
+    slow.speed01 = 0.25;
+    applyCurrent(slow, 1);
+    expect(slow.vx).toBeLessThan(tuning.maxSpeed * 0.25);
+
+    const fast = createPlayer();
+    fast.x = edge;
+    fast.vx = tuning.maxSpeed * 0.8;
+    fast.speed01 = 0.8;
+    applyCurrent(fast, 1);
+    expect(fast.vx).toBeGreaterThan(tuning.maxSpeed * 0.8);
+  });
+
+  it("current leaves homebound traffic alone", () => {
+    const edge = tuning.bandEdges[0]!;
+    const home = createPlayer();
+    home.x = edge;
+    home.vx = -tuning.maxSpeed * 0.8;
+    home.speed01 = 0.8;
+    applyCurrent(home, 1);
+    expect(home.vx).toBeCloseTo(-tuning.maxSpeed * 0.8);
   });
 });

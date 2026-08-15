@@ -8,6 +8,8 @@ export interface DebugExtras {
   track?: TrackId;
   radius01?: number;
   musicHold?: number;
+  arrange01?: number;
+  beatMode?: string;
 }
 
 export interface DebugOverlay {
@@ -92,6 +94,8 @@ export function createDebugOverlay(
         `pos ${p.x.toFixed(1)}, ${p.z.toFixed(1)}`,
         `radius01 ${(extra.radius01 ?? 0).toFixed(2)}`,
         `musicHold ${(extra.musicHold ?? 0).toFixed(2)}`,
+        `arrange ${(extra.arrange01 ?? 0).toFixed(2)}`,
+        `beat ${extra.beatMode ?? "?"}`,
         `shatterT ${p.shatterT.toFixed(2)}`,
         `obs ${extra.obstacleCount ?? "?"} / ${extra.densityTarget?.toFixed(0) ?? "?"}`,
         `warp ${(extra.warp ?? 0).toFixed(2)}`,

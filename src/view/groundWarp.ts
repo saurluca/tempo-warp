@@ -118,7 +118,7 @@ export function createGroundWarp(scene: THREE.Scene): GroundWarp {
       uniforms.uKick.value = kick;
       uniforms.uSnare.value = snare;
       uniforms.uHat.value = hat;
-      const n = Math.min(3, Math.max(1, Math.floor(lines)));
+      const n = Math.min(3, Math.max(0, Math.floor(lines)));
       if (kick > 0.75 && lastKick < 0.35) {
         let live = 0;
         for (let i = 0; i < 3; i++) if (ages[i]! < 1.15) live += 1;

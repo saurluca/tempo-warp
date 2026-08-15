@@ -95,6 +95,19 @@ export const tuning = {
   /** Music peak-hold decay (1/s). Shatter dumps faster. */
   musicHoldDecay: 0.11,
   musicHoldDecayShatter: 0.55,
+  /**
+   * Radial current at each band edge. Fast enough + heading out = it carries
+   * you; too slow = you slip back. Feel numbers, not a HUD gate.
+   */
+  currentWidth: 100,
+  currentRideSpeed: 0.52,
+  currentCarry: 20,
+  currentSlip: 16,
+  /** DJ handoff: duck out, swap pattern, then stems climb like a new run. */
+  djFadeOut: 0.85,
+  djFadeIn: 1.35,
+  /** arrange01 rise (1/s) after a spin — hush bed → full mix in ~20s */
+  arrangeRise: 0.038,
   /** After a hit, land this far through the previous band (0..1). */
   shatterInwardT: 0.55,
   spawnSpacingMax: 16,
