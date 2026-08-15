@@ -1,6 +1,5 @@
 import { isMobile } from "../flags";
 import { tuning } from "../tuning";
-import type { PlayerState } from "./types";
 
 export function maxSpeed(): number {
   return isMobile() ? tuning.maxSpeed * tuning.mobileSpeedScale : tuning.maxSpeed;
@@ -46,37 +45,6 @@ export function currentStrength(radius: number): number {
     if (t > best) best = t;
   }
   return Math.max(0, best);
-}
-
-/** Carry the fast outward; shove the slow back. Homebound traffic is left alone. */
-export function applyCurrent(p: PlayerState, dt: number): void {
-  if (p.shatterT > 0) return;
-  const r = Math.hypot(p.x, p.z);
-  const c = currentStrength(r);
-  if (c <= 0 || r < 1e-3) return;
-
-  const rx = p.x / r;
-  const rz = p.z / r;
-  const spd = Math.hypot(p.vx, p.vz);
-  const outward = spd > 0.05 ? (p.vx * rx + p.vz * rz) / spd : 0;
-
-  let a = 0;
-  if (p.speed01 >= tuning.currentRideSpeed && outward > 0.15) {
-    a = tuning.currentCarry;
-  } else if (outward > 0 && p.speed01 < tuning.currentRideSpeed) {
-    a = -tuning.currentSlip;
-  }
-  if (a === 0) return;
-
-  p.vx += rx * a * c * dt;
-  p.vz += rz * a * c * dt;
-  const n = Math.hypot(p.vx, p.vz);
-  const cap = maxSpeed();
-  if (n > cap) {
-    p.vx *= cap / n;
-    p.vz *= cap / n;
-  }
-  p.speed01 = Math.min(1, n / cap);
 }
 
 /** 0 hush … 4 sanctuary */

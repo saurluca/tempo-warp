@@ -2,7 +2,7 @@
 
 export const tuning = {
   /** Top speed once throttle has fully spun up */
-  maxSpeed: 52,
+  maxSpeed: 48,
   /** Phones see a smaller screen — same world, less reaction time */
   mobileSpeedScale: 0.76,
 
@@ -13,7 +13,7 @@ export const tuning = {
   throttleRise: 1.7,
   throttleFall: 1.5,
   /** Engine push while throttling (world units / s² at full throttle) */
-  engineAccel: 20,
+  engineAccel: 30,
   /** Lateral / aim assist push (keeps turns lively without hard accel) */
   steerAccel: 16,
   /**
@@ -109,14 +109,8 @@ export const tuning = {
   /** Music peak-hold decay (1/s). Shatter dumps faster. */
   musicHoldDecay: 0.11,
   musicHoldDecayShatter: 0.55,
-  /**
-   * Radial current at each band edge. Fast enough + heading out = it carries
-   * you; too slow = you slip back. Feel numbers, not a HUD gate.
-   */
+  /** Band-edge width for leftover visual warp only — no speed force. */
   currentWidth: 100,
-  currentRideSpeed: 0.52,
-  currentCarry: 20,
-  currentSlip: 16,
   /** DJ handoff: duck out, swap pattern, then stems climb like a new run. */
   djFadeOut: 2.4,
   djFadeIn: 3.2,

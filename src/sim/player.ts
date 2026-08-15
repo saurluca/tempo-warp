@@ -92,17 +92,9 @@ export function stepPlayer(
     if (speed > 0.05) {
       const hx = p.vx / speed;
       const hz = p.vz / speed;
-      let tx = nx;
-      let tz = nz;
-      // Don't U-turn into behind-aim — keep forward hemisphere only
-      const turnDot = hx * nx + hz * nz;
-      if (turnDot < 0) {
-        tx = hx;
-        tz = hz;
-      }
       const k = 1 - Math.exp(-tuning.turnAgility * dt * Math.max(aimBlend, 0.15));
-      let bx = hx + (tx - hx) * k;
-      let bz = hz + (tz - hz) * k;
+      let bx = hx + (nx - hx) * k;
+      let bz = hz + (nz - hz) * k;
       const bl = Math.hypot(bx, bz);
       if (bl > 1e-5) {
         p.vx = (bx / bl) * speed;

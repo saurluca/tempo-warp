@@ -7,7 +7,7 @@ import { startLoop } from "./loop";
 import { playerHitsObstacle, playerOverlapsAny, separatePlayer } from "./sim/collide";
 import { createObstacleField } from "./sim/obstacles";
 import { applyImpact, createPlayer, stepPlayer } from "./sim/player";
-import { applyCurrent, currentStrength, densityAt, radius01At, radiusOf, warpAt } from "./sim/world";
+import { currentStrength, densityAt, radius01At, radiusOf, warpAt } from "./sim/world";
 import { tuning } from "./tuning";
 import { clearForRadius, colorForRadius } from "./view/colors";
 import { createBeatWave } from "./view/beatWave";
@@ -108,7 +108,6 @@ startLoop(
     pointer.syncFromPlayer(player.x, player.z, halfW, halfH);
 
     stepPlayer(player, dt, pointer.worldX, pointer.worldZ, pointer.boosting, pointer.active);
-    applyCurrent(player, dt);
     // Prefer velocity heading; fall back to aim so spawns load ahead of the camera
     let hx = player.vx;
     let hz = player.vz;
@@ -194,8 +193,6 @@ startLoop(
       beatMode === "rings" ? (hold < 0.4 ? 1 : hold < 0.7 ? 2 : 3) + (current > 0.35 ? 1 : 0) : 0;
     groundWarp.setBeat(audio.kick, audio.snare, audio.hat, beatLines, dtReal);
     groundWarp.follow(player.x, player.z);
-    stars.setBand(colorForRadius(radius));
-    stars.update(player.x, player.z, radius, speed, audio.kick, audio.snare, audio.hat, dtReal);
     game.placeGround(player.x, player.z);
 
     obstacleViews.sync(field.obstacles, dtReal, {
@@ -207,6 +204,24 @@ startLoop(
     });
     game.followPlayer(player.x, player.z, dtReal);
     const halfW = (game.camera.right - game.camera.left) * 0.5;
+    const halfH = (game.camera.top - game.camera.bottom) * 0.5;
+    stars.setBand(colorForRadius(radius));
+    stars.update(
+      game.camera.position.x,
+      game.camera.position.z,
+      halfW,
+      halfH,
+      player.x,
+      player.z,
+      player.vx,
+      player.vz,
+      radius,
+      speed,
+      audio.kick,
+      audio.snare,
+      audio.hat,
+      dtReal,
+    );
     beatWave.update(
       game.camera.position.x,
       game.camera.position.z,

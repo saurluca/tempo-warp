@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import {
-  applyCurrent,
   bandAt,
   currentIndex,
   currentStrength,
@@ -11,7 +10,6 @@ import {
   spawnSpacingAt,
   warpAt,
 } from "../../src/sim/world";
-import { createPlayer } from "../../src/sim/player";
 import { tuning } from "../../src/tuning";
 
 describe("world curves", () => {
@@ -83,23 +81,6 @@ describe("world curves", () => {
     expect(currentStrength(tuning.bandEdges[0]! + tuning.currentWidth + 20)).toBe(0);
   });
 
-  it("current carries the fast out and slips the slow back", () => {
-    const edge = tuning.bandEdges[0]!;
-    const slow = createPlayer();
-    slow.x = edge;
-    slow.vx = tuning.maxSpeed * 0.25;
-    slow.speed01 = 0.25;
-    applyCurrent(slow, 1);
-    expect(slow.vx).toBeLessThan(tuning.maxSpeed * 0.25);
-
-    const fast = createPlayer();
-    fast.x = edge;
-    fast.vx = tuning.maxSpeed * 0.8;
-    fast.speed01 = 0.8;
-    applyCurrent(fast, 1);
-    expect(fast.vx).toBeGreaterThan(tuning.maxSpeed * 0.8);
-  });
-
   it("currents keep appearing past the last band", () => {
     const last = tuning.bandEdges[tuning.bandEdges.length - 1]!;
     const next = last + tuning.currentRepeat;
@@ -107,13 +88,4 @@ describe("world curves", () => {
     expect(currentIndex(next)).toBeGreaterThan(currentIndex(last));
   });
 
-  it("current leaves homebound traffic alone", () => {
-    const edge = tuning.bandEdges[0]!;
-    const home = createPlayer();
-    home.x = edge;
-    home.vx = -tuning.maxSpeed * 0.8;
-    home.speed01 = 0.8;
-    applyCurrent(home, 1);
-    expect(home.vx).toBeCloseTo(-tuning.maxSpeed * 0.8);
-  });
 });

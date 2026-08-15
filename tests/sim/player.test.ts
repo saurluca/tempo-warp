@@ -78,6 +78,18 @@ describe("car-like throttle", () => {
     expect(Math.hypot(p.vx, p.vz)).toBeGreaterThan(before * 0.55);
   });
 
+  it("aim behind the craft still steers", () => {
+    const p = hold(2.5, true);
+    const beforeVx = p.vx;
+    expect(beforeVx).toBeGreaterThan(5);
+    const dt = 1 / 60;
+    for (let i = 0; i < 45; i++) {
+      stepPlayer(p, dt, p.x - 20, p.z + 12, true, true);
+    }
+    expect(p.vz).not.toBeCloseTo(0, 1);
+    expect(Math.hypot(p.vx, p.vz)).toBeGreaterThan(beforeVx * 0.55);
+  });
+
   it("impact knocks outward instead of freezing", () => {
     const p = hold(2.5, true);
     applyImpact(p, p.x - 1, p.z);
