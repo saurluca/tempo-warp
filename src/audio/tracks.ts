@@ -1,3 +1,5 @@
+import { tuning } from "../tuning";
+
 /** DJ set order — adjacent BPM/key stay close so spinNext blends. */
 export const TRACK_IDS = [
   "veil",
@@ -766,4 +768,15 @@ export function nextTrack(current: TrackId): TrackId {
 export function prevTrack(current: TrackId): TrackId {
   const i = TRACK_IDS.indexOf(current);
   return TRACK_IDS[Math.max(0, i - 1)]!;
+}
+
+/** Same open points as the mix — kick, bass, snare, hat, lead, voice. */
+export const STEM_GATES = [0.12, 0.22, 0.28, 0.45, 0.62, 0.78] as const;
+
+/** Survive this long without a hit. More open stems = a longer stage. */
+export function djHoldFor(arrange01: number): number {
+  let parts = 0;
+  for (const g of STEM_GATES) if (arrange01 > g) parts += 1;
+  if (parts < 1) parts = 1;
+  return tuning.djHoldBase + (parts - 1) * tuning.djHoldPerPart;
 }

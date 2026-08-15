@@ -1,6 +1,6 @@
 import * as Tone from "tone";
 import { tuning } from "../tuning";
-import { KITS, nextTrack, prevTrack, TRACKS, type Kit, type LeadKind, type TrackId } from "./tracks";
+import { djHoldFor, KITS, nextTrack, TRACKS, type Kit, type LeadKind, type TrackId } from "./tracks";
 
 export interface AudioBus {
   unlocked: boolean;
@@ -18,14 +18,15 @@ export interface AudioBus {
   /** Beats since transport start — visuals lock to this, not wall time. */
   beatPhase: number;
   unlock: () => Promise<void>;
+  /** Screen-off / standby: cut output and stop Transport so it can't glitch. */
+  sleep: () => void;
+  wake: () => Promise<void>;
   setFromPlay: (speed01: number, radius01: number, shattered: boolean, dt: number) => void;
   setMuted: (m: boolean) => void;
   setTrack: (id: TrackId) => void;
   cycleTrack: () => TrackId;
   /** Crossfade into the next track; incoming starts at the hush bed. */
   spinNext: () => TrackId;
-  /** Hit: one track back (or stay on the first). */
-  spinPrev: () => TrackId;
 }
 
 /**
@@ -33,8 +34,10 @@ export interface AudioBus {
  * speed01 opens intensity. The outer rim does not mute the groove.
  */
 export function createAudioBus(initialTrack: TrackId): AudioBus {
+  const MASTER = 0.55;
   let unlocked = false;
   let muted = false;
+  let sleeping = false;
   let trackId: TrackId = initialTrack;
   let speed01 = 0;
   /** Always a hush bed — never start (or decay) to silence. */
@@ -196,8 +199,30 @@ export function createAudioBus(initialTrack: TrackId): AudioBus {
     grit.wet.rampTo(kit.grit, 0.25);
   };
 
+  const hushVoices = () => {
+    kick.triggerRelease();
+    snare.triggerRelease();
+    hat.triggerRelease();
+    bass.triggerRelease();
+    lead.triggerRelease();
+    leadFm.triggerRelease();
+    leadAm.triggerRelease();
+    voice.triggerRelease();
+    heart.triggerRelease();
+  };
+
+  const tearLoop = () => {
+    if (loop) {
+      loop.stop();
+      loop.dispose();
+      loop = null;
+    }
+    Tone.Transport.stop();
+    Tone.Transport.cancel(0);
+  };
+
   const applyMix = () => {
-    if (!unlocked || muted) return;
+    if (!unlocked || muted || sleeping) return;
     const s = shattered ? 0 : speed01;
     const h = shattered ? arrange01 * 0.35 : arrange01;
     const fade = mixOut * mixOut * (3 - 2 * mixOut);
@@ -288,6 +313,17 @@ export function createAudioBus(initialTrack: TrackId): AudioBus {
     loop.start(0);
   };
 
+  Tone.getContext().rawContext.addEventListener("statechange", () => {
+    const state = Tone.getContext().rawContext.state as string;
+    if ((state === "interrupted" || state === "suspended") && unlocked && !sleeping) {
+      sleeping = true;
+      master.gain.cancelScheduledValues(0);
+      master.gain.value = 0;
+      hushVoices();
+      tearLoop();
+    }
+  });
+
   const bus: AudioBus = {
     get unlocked() {
       return unlocked;
@@ -327,7 +363,10 @@ export function createAudioBus(initialTrack: TrackId): AudioBus {
       return Tone.Transport.seconds * (Tone.Transport.bpm.value / 60);
     },
     async unlock() {
-      if (unlocked) return;
+      if (unlocked) {
+        if (sleeping) await bus.wake();
+        return;
+      }
       try {
         await Tone.start();
         const ctx = Tone.getContext();
@@ -341,13 +380,39 @@ export function createAudioBus(initialTrack: TrackId): AudioBus {
         Tone.Transport.start();
       }
       unlocked = true;
-      master.gain.rampTo(muted ? 0 : 0.42, 0.08);
+      master.gain.rampTo(muted ? 0 : MASTER, 0.08);
+      applyMix();
+    },
+    sleep() {
+      if (!unlocked || sleeping) return;
+      sleeping = true;
+      master.gain.cancelScheduledValues(0);
+      master.gain.value = 0;
+      hushVoices();
+      tearLoop();
+      const raw = Tone.getContext().rawContext as AudioContext;
+      if (raw.state === "running") void raw.suspend();
+    },
+    async wake() {
+      if (!unlocked || !sleeping) return;
+      try {
+        const ctx = Tone.getContext();
+        if (ctx.state !== "running") await ctx.resume();
+        if (ctx.state !== "running") return;
+      } catch {
+        return;
+      }
+      Tone.Transport.cancel(0);
+      buildLoop(trackId);
+      if (Tone.Transport.state !== "started") Tone.Transport.start();
+      sleeping = false;
+      master.gain.rampTo(muted ? 0 : MASTER, 0.12);
       applyMix();
     },
     setMuted(m: boolean) {
       muted = m;
-      if (unlocked) {
-        master.gain.rampTo(m ? 0 : 0.42, 0.08);
+      if (unlocked && !sleeping) {
+        master.gain.rampTo(m ? 0 : MASTER, 0.08);
       }
     },
     setTrack(id: TrackId) {
@@ -365,18 +430,10 @@ export function createAudioBus(initialTrack: TrackId): AudioBus {
       return n;
     },
     spinNext() {
-      if (spin !== "idle" || onTrack < tuning.djMinHold) return trackId;
+      if (spin !== "idle" || onTrack < djHoldFor(arrange01)) return trackId;
       pendingTrack = nextTrack(trackId);
       spin = "out";
-      return pendingTrack;
-    },
-    spinPrev() {
-      onTrack = 0;
-      if (spin !== "idle") return trackId;
-      const prev = prevTrack(trackId);
-      if (prev === trackId) return trackId;
-      pendingTrack = prev;
-      spin = "out";
+      console.info("[tempo-warp] spin", pendingTrack);
       return pendingTrack;
     },
     setFromPlay(s: number, r01: number, isShattered: boolean, dt: number) {
@@ -413,10 +470,14 @@ export function createAudioBus(initialTrack: TrackId): AudioBus {
         }
       }
 
+      if (isShattered && !lastShattered) onTrack = 0;
       shattered = isShattered;
-      if (unlocked && spin !== "out") onTrack += dt;
+      if (unlocked && spin === "idle" && !isShattered) {
+        onTrack += dt;
+        if (onTrack >= djHoldFor(arrange01)) bus.spinNext();
+      }
 
-      if (!unlocked || muted) return;
+      if (!unlocked || muted || sleeping) return;
 
       kickPulse = Math.max(0, kickPulse - dt * 7);
       snarePulse = Math.max(0, snarePulse - dt * 9);

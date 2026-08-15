@@ -16,7 +16,7 @@ bunx vercel     # deploy this folder
 | `?seed=123` | Deterministic obstacle field |
 | `?track=veil\|ember\|ash\|…` | Force a music track (else random on load) |
 
-**Music:** 16 tracks in DJ set order. Riding a current crossfades into the next and rebuilds stems. In debug, click the ♪ button to cycle. Kits and mix notes: [music.md](music.md).
+**Music:** 16 tracks in DJ set order. Survive a track without getting hit to crossfade into the next. In debug, click the ♪ button to cycle. Kits and mix notes: [music.md](music.md).
 
 | # | Track | BPM | Key | What you hear |
 |---|---|---|---|---|

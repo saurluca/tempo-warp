@@ -108,17 +108,18 @@ export function inwardBandRadius(radius: number): number {
 }
 
 /** Ease-out so early boost stays timid; late boost gets dense. Radius = |origin|. */
-export function densityAt(speed01: number, radius = 0): number {
+export function densityAt(speed01: number, radius = 0, ease = 0): number {
   const t = clamp01(speed01);
   const curved = 1 - (1 - t) * (1 - t);
   const bySpeed = tuning.densityMin + (tuning.densityMax - tuning.densityMin) * curved;
   const radialT = clamp01(radius / tuning.densityRadialReach);
-  return bySpeed + tuning.densityRadialExtra * radialT * radialT;
+  const raw = bySpeed + tuning.densityRadialExtra * radialT * radialT;
+  return raw * (1 - clamp01(ease) * tuning.densityEaseCut);
 }
 
 /** Spacing between spawn attempts — shrinks as density rises. */
-export function spawnSpacingAt(speed01: number, radius = 0): number {
-  const d = densityAt(speed01, radius);
+export function spawnSpacingAt(speed01: number, radius = 0, ease = 0): number {
+  const d = densityAt(speed01, radius, ease);
   const dMax = tuning.densityMax + tuning.densityRadialExtra;
   const t = (d - tuning.densityMin) / Math.max(0.0001, dMax - tuning.densityMin);
   return tuning.spawnSpacingMax + (tuning.spawnSpacingMin - tuning.spawnSpacingMax) * t;

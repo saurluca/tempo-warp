@@ -1,13 +1,13 @@
 import * as THREE from "three";
 import { createAudioBus } from "./audio/bus";
-import { createDebugOverlay } from "./debug/overlay";
+import { createDebugOverlay, createTrackChip } from "./debug/overlay";
 import { readFlags } from "./flags";
 import { createPointer } from "./input/pointer";
 import { startLoop } from "./loop";
 import { playerHitsObstacle, playerOverlapsAny, separatePlayer } from "./sim/collide";
 import { createObstacleField } from "./sim/obstacles";
 import { applyImpact, createPlayer, stepPlayer } from "./sim/player";
-import { applyCurrent, currentIndex, currentStrength, densityAt, radius01At, radiusOf, warpAt } from "./sim/world";
+import { applyCurrent, currentStrength, densityAt, radius01At, radiusOf, warpAt } from "./sim/world";
 import { tuning } from "./tuning";
 import { clearForRadius, colorForRadius } from "./view/colors";
 import { createBeatWave } from "./view/beatWave";
@@ -46,6 +46,8 @@ const debug = createDebugOverlay(flags.debug, () => {
   const id = audio.cycleTrack();
   console.info("[tempo-warp] track", id);
 });
+const trackChip = createTrackChip();
+trackChip.update(audio.track);
 console.info("[tempo-warp] music", flags.track);
 const flashClear = new THREE.Color(0x1a3048);
 const clearMix = new THREE.Color();
@@ -55,7 +57,6 @@ let shatterCount = 0;
 let fpsSmooth = 60;
 let invuln = 0;
 let flashT = 0;
-let lastCurrent = 0;
 
 const canvas = game.renderer.domElement;
 const tryUnlock = () => {
@@ -67,9 +68,19 @@ canvas.addEventListener("pointerup", tryUnlock);
 canvas.addEventListener("touchstart", tryUnlock, { passive: true });
 canvas.addEventListener("touchend", tryUnlock, { passive: true });
 canvas.addEventListener("click", tryUnlock);
+const sleepAudio = () => audio.sleep();
+const wakeAudio = () => {
+  void audio.wake();
+  tryUnlock();
+};
 document.addEventListener("visibilitychange", () => {
-  if (document.visibilityState === "visible") tryUnlock();
+  if (document.visibilityState === "hidden") sleepAudio();
+  else wakeAudio();
 });
+window.addEventListener("pagehide", sleepAudio);
+window.addEventListener("pageshow", wakeAudio);
+document.addEventListener("freeze", sleepAudio);
+document.addEventListener("resume", wakeAudio);
 
 obstacleViews.sync(field.obstacles);
 
@@ -83,6 +94,7 @@ if (flags.debug) {
   };
 }
 
+let lastFrame = performance.now();
 startLoop(
   (dt) => {
     simTime += dt;
@@ -102,7 +114,7 @@ startLoop(
       hx = pointer.worldX - player.x;
       hz = pointer.worldZ - player.z;
     }
-    field.step(dt, simTime, player.x, player.z, player.speed01, hx, hz);
+    field.step(dt, simTime, player.x, player.z, player.speed01, hx, hz, audio.arrange01);
 
     // Latch: after a hit, ignore collisions until fully clear (fixes ghost re-stops)
     if (!player.clearOfHazards) {
@@ -118,10 +130,9 @@ startLoop(
           separatePlayer(player, field.obstacles);
           burst.trigger(hx, hz);
           obstacleViews.pulse(hx, hz);
-          const back = audio.spinPrev();
-          if (back !== audio.track) console.info("[tempo-warp] drop", back);
           flashT = 0.22;
           shatterCount += 1;
+          field.noteHit();
           invuln = tuning.shatterInvuln;
           break;
         }
@@ -131,15 +142,15 @@ startLoop(
     burst.update(dt);
     if (flashT > 0) flashT = Math.max(0, flashT - dt);
     const radius = radiusOf(player.x, player.z);
-    const rim = currentIndex(radius);
-    if (rim > lastCurrent && player.speed01 >= tuning.currentRideSpeed && player.shatterT <= 0) {
-      const next = audio.spinNext();
-      if (next !== audio.track) console.info("[tempo-warp] spin", next);
-    }
-    lastCurrent = rim;
     audio.setFromPlay(player.speed01, radius01At(radius), player.shatterT > 0, dt);
   },
   (_alpha, dtReal) => {
+    const now = performance.now();
+    if (now - lastFrame > 2000) {
+      audio.sleep();
+      if (document.visibilityState !== "hidden") void audio.wake();
+    }
+    lastFrame = now;
     fpsSmooth = fpsSmooth * 0.9 + (1 / Math.max(dtReal, 1 / 240)) * 0.1;
 
     const speed = player.speed01;
@@ -205,9 +216,10 @@ startLoop(
     );
 
     game.renderer.render(game.scene, game.camera);
+    trackChip.update(audio.track);
     debug.update(player, fpsSmooth, {
       obstacleCount: field.obstacles.length,
-      densityTarget: densityAt(player.speed01, radius),
+      densityTarget: densityAt(player.speed01, radius, field.ease),
       warp,
       track: audio.track,
       radius01: radius01At(radius),
@@ -226,7 +238,7 @@ startLoop(
       shatterT: player.shatterT,
       audioUnlocked: audio.unlocked,
       obstacleCount: field.obstacles.length,
-      densityTarget: densityAt(player.speed01, radius),
+      densityTarget: densityAt(player.speed01, radius, field.ease),
       warp,
       track: audio.track,
       radius01: radius01At(radius),

@@ -20,6 +20,15 @@ describe("world curves", () => {
     expect(densityAt(0.5)).toBeLessThan(densityAt(1));
   });
 
+  it("hit ease thins density without wiping it", () => {
+    const full = densityAt(1, 800, 0);
+    const one = densityAt(1, 800, 0.28);
+    const max = densityAt(1, 800, 1);
+    expect(one).toBeLessThan(full);
+    expect(max).toBeLessThan(one);
+    expect(max).toBeGreaterThan(full * 0.65);
+  });
+
   it("density grows with distance from origin", () => {
     expect(densityAt(0.4, 0)).toBeLessThan(densityAt(0.4, 400));
     expect(densityAt(0.4, 400)).toBeLessThan(densityAt(0.4, 1600));

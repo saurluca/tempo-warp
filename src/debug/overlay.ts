@@ -1,4 +1,5 @@
 import { TRACKS, type TrackId } from "../audio/tracks";
+import { isMobile } from "../flags";
 import type { PlayerState } from "../sim/types";
 
 export interface DebugExtras {
@@ -14,6 +15,32 @@ export interface DebugExtras {
 
 export interface DebugOverlay {
   update: (p: PlayerState, fps: number, extra?: DebugExtras) => void;
+}
+
+export function createTrackChip(): { update: (id: TrackId) => void } {
+  const el = document.createElement("div");
+  el.style.cssText = [
+    "position:fixed",
+    ...(isMobile() ? ["left:8px", "bottom:8px"] : ["right:8px", "top:8px"]),
+    "z-index:10",
+    "pointer-events:none",
+    "font:12px/1.2 monospace",
+    "color:#0a0e14",
+    "background:#4da3ff",
+    "padding:6px 10px",
+    "border-radius:2px",
+  ].join(";");
+  document.body.appendChild(el);
+  let last: TrackId | undefined;
+  return {
+    update(id) {
+      if (id === last) return;
+      last = id;
+      const def = TRACKS[id];
+      el.textContent = `♪ ${def.label}`;
+      el.style.background = def.color;
+    },
+  };
 }
 
 export function createDebugOverlay(enabled: boolean, onCycleTrack?: () => void): DebugOverlay {

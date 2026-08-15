@@ -5,6 +5,8 @@ import { densityAt, moverChanceAt, spawnSpacingAt } from "./world";
 
 export interface ObstacleField {
   obstacles: Obstacle[];
+  ease: number;
+  noteHit: () => void;
   step: (
     dt: number,
     time: number,
@@ -13,15 +15,68 @@ export interface ObstacleField {
     speed01: number,
     headingX: number,
     headingZ: number,
+    arrange01?: number,
   ) => void;
 }
 
-function pickKind(rand: () => number): ObstacleKind {
-  const r = rand();
-  if (r < 0.28) return "spire";
-  if (r < 0.5) return "monolith";
-  if (r < 0.74) return "ring";
-  return "shard";
+/** Same stem-open gates as audio/bus applyMix. Visible a bit before you hear them. */
+const KIND_LEAD = 0.12;
+const KIND_GATE: { kind: ObstacleKind; gate: number }[] = [
+  { kind: "spire", gate: 0.22 },
+  { kind: "ring", gate: 0.45 },
+  { kind: "shard", gate: 0.62 },
+  { kind: "monolith", gate: 0.78 },
+];
+
+function kindWeight(arrange01: number, gate: number): number {
+  if (arrange01 >= gate - KIND_LEAD) return 1;
+  const t = Math.max(0, (arrange01 - (gate - KIND_LEAD - 0.06)) / 0.06);
+  return t * t * 0.1;
+}
+
+export function dueKinds(arrange01: number): ObstacleKind[] {
+  return KIND_GATE.filter((k) => arrange01 >= k.gate - KIND_LEAD).map((k) => k.kind);
+}
+
+/** Live stems (and ones about to open) dominate. */
+export function pickKind(rand: () => number, arrange01 = 1): ObstacleKind {
+  let total = 0;
+  const weights = KIND_GATE.map((k) => {
+    const w = kindWeight(arrange01, k.gate);
+    total += w;
+    return w;
+  });
+  let r = rand() * Math.max(total, 1e-6);
+  for (let i = 0; i < KIND_GATE.length; i++) {
+    r -= weights[i]!;
+    if (r <= 0) return KIND_GATE[i]!.kind;
+  }
+  return "spire";
+}
+
+function countKind(list: Obstacle[], kind: ObstacleKind): number {
+  let n = 0;
+  for (const o of list) if (o.kind === kind) n += 1;
+  return n;
+}
+
+/** Prefer a live kind the field is short on, so the beat has bodies in view. */
+export function pickNeededKind(rand: () => number, arrange01: number, list: Obstacle[]): ObstacleKind {
+  const due = dueKinds(arrange01);
+  if (due.length === 0) return pickKind(rand, arrange01);
+  let need: ObstacleKind = due[0]!;
+  let needN = Infinity;
+  for (const k of due) {
+    const n = countKind(list, k);
+    if (n < needN) {
+      needN = n;
+      need = k;
+    }
+  }
+  if (needN === 0) return need;
+  const fair = list.length / due.length;
+  if (needN < fair * 0.45 && rand() < 0.8) return need;
+  return pickKind(rand, arrange01);
 }
 
 function makeObstacle(
@@ -86,12 +141,12 @@ export function createObstacleField(seed: number): ObstacleField {
   const obstacles: Obstacle[] = [];
   let nextId = 1;
   let spawnAcc = 0;
+  let ease = 0;
 
   for (let i = 0; i < tuning.safeRingCount; i++) {
     const angle = (i / tuning.safeRingCount) * Math.PI * 2 + rand() * 0.25;
     const dist = tuning.safeRingRadius + rand() * 8;
-    // Opening ring: readable solids, no rings (teach collision first)
-    const kind: ObstacleKind = rand() > 0.5 ? "spire" : "monolith";
+    const kind = pickKind(rand, 0.24);
     obstacles.push(
       makeObstacle(
         nextId++,
@@ -122,41 +177,59 @@ export function createObstacleField(seed: number): ObstacleField {
     speed01: number,
     headingX: number,
     headingZ: number,
+    arrange01: number,
+    forcedKind?: ObstacleKind,
   ) => {
     const radius = Math.hypot(px, pz);
-    const target = Math.floor(densityAt(speed01, radius));
-    if (obstacles.length >= target) return;
+    const target = Math.floor(densityAt(speed01, radius, ease));
+    const slack = forcedKind ? 3 : 0;
+    if (obstacles.length >= target + slack) return false;
 
     const dist = tuning.spawnRingMin + rand() * (tuning.spawnRingMax - tuning.spawnRingMin);
     const angle = pickSpawnAngle(rand, headingX, headingZ);
     const x = px + Math.cos(angle) * dist;
     const z = pz + Math.sin(angle) * dist;
 
-    if (Math.hypot(x - px, z - pz) < tuning.clearBubble) return;
+    if (Math.hypot(x - px, z - pz) < tuning.clearBubble) return false;
 
     for (const o of obstacles) {
-      if (Math.hypot(o.baseX - x, o.baseZ - z) < 5.5) return;
+      if (Math.hypot(o.baseX - x, o.baseZ - z) < 5.5) return false;
     }
 
     const moving = rand() < moverChanceAt(speed01);
-    obstacles.push(makeObstacle(nextId++, x, z, rand, moving));
+    const kind = forcedKind ?? pickNeededKind(rand, arrange01, obstacles);
+    obstacles.push(makeObstacle(nextId++, x, z, rand, moving, kind));
+    return true;
   };
 
   return {
     obstacles,
-    step(dt, time, px, pz, speed01, headingX, headingZ) {
+    get ease() {
+      return ease;
+    },
+    noteHit() {
+      ease = Math.min(1, ease + tuning.densityEaseHit);
+    },
+    step(dt, time, px, pz, speed01, headingX, headingZ, arrange01 = 1) {
+      ease = Math.max(0, ease - dt * tuning.densityEaseDecay);
       recycleOrCull(px, pz);
 
       const radius = Math.hypot(px, pz);
-      const spacing = spawnSpacingAt(speed01, radius);
+      const spacing = spawnSpacingAt(speed01, radius, ease);
       spawnAcc += Math.max(speed01, 0.08) * tuning.maxSpeed * dt;
       while (spawnAcc >= spacing) {
         spawnAcc -= spacing;
-        trySpawn(px, pz, speed01, headingX, headingZ);
+        trySpawn(px, pz, speed01, headingX, headingZ, arrange01);
       }
 
-      if (obstacles.length < densityAt(speed01, radius) * 0.7) {
-        trySpawn(px, pz, speed01, headingX, headingZ);
+      if (obstacles.length < densityAt(speed01, radius, ease) * 0.7) {
+        trySpawn(px, pz, speed01, headingX, headingZ, arrange01);
+      }
+
+      for (const kind of dueKinds(arrange01)) {
+        if (countKind(obstacles, kind) === 0) {
+          trySpawn(px, pz, speed01, headingX, headingZ, arrange01, kind);
+        }
       }
 
       for (const o of obstacles) {

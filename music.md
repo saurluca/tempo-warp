@@ -2,7 +2,7 @@
 
 Procedural Tone.js. No audio files. One sequencer, one synth rack; each track swaps a **kit** (instruments / timbre) on the DJ handoff.
 
-Code: `src/audio/tracks.ts` (patterns + kits), `src/audio/bus.ts` (mix, stems, spin). Feel knobs: `tuning.ts` (`djMinHold`, `djFadeOut` / `djFadeIn`, `arrangeRise`).
+Code: `src/audio/tracks.ts` (patterns + kits), `src/audio/bus.ts` (mix, stems, spin). Feel knobs: `tuning.ts` (`djHoldBase` / `djHoldPerPart`, `djFadeOut` / `djFadeIn`, `arrangeRise`).
 
 ## How it plays
 
@@ -10,8 +10,8 @@ Code: `src/audio/tracks.ts` (patterns + kits), `src/audio/bus.ts` (mix, stems, s
 - A 16th-note loop fires kick / snare / hats / bass / lead / voice. The pad drones the track’s root.
 - **Distance** (`musicHold`, peak-held `radius01`) opens the arrangement. Floor is a hush bed (pad + kick + a bit of bass) — never silence.
 - **Speed** opens the filter, pushes gains, and nudges BPM a few percent. It does not pick the notes.
-- Shatter ducks the mix and plays a heartbeat. Track does not change.
-- Riding a **current** (band rim, or every 700 units past the last) after ~48s (`djMinHold`) **spins** the next track: duck + filter close → swap pattern + kit → fade in from the hush bed → stems rebuild over ~20s.
+- Shatter ducks the mix and plays a heartbeat. Track does not change; the survive clock resets.
+- Survive without a hit to **spin** the next track. Hold grows with open stems (~16s hush → ~51s full mix): duck + filter close → swap pattern + kit → fade in from the hush bed → stems rebuild over ~20s.
 
 `?track=ember` forces a start. `?debug=1` + ♪ cycles with a hard cut (no DJ fade).
 
