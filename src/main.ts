@@ -186,7 +186,9 @@ startLoop(
 
     const warp = shattered ? 0 : warpAt(speed, radius);
     groundWarp.setBand(colorForRadius(radius));
-    groundWarp.setWarp(warp, simTime);
+    groundWarp.setWarp(warp, audio.unlocked ? audio.beatPhase : simTime);
+    const beatLines = audio.musicHold < 0.4 ? 1 : audio.musicHold < 0.7 ? 2 : 3;
+    groundWarp.setBeat(audio.kick, audio.snare, audio.hat, beatLines, dtReal);
     // Mesh always under you (endless); sticky vs world is just UV scroll
     const worldFixed = !bgFollow;
     groundWarp.follow(player.x, player.z, worldFixed);

@@ -55,12 +55,12 @@ describe("world curves", () => {
     expect(inwardBandRadius(20)).toBe(20);
   });
 
-  it("density drops in the sanctuary", () => {
-    expect(densityAt(0.5, tuning.sanctuaryRadius)).toBeLessThan(densityAt(0.5, 1600));
+  it("density stays high past the outer rim", () => {
+    expect(densityAt(0.5, tuning.sanctuaryRadius + 400)).toBeGreaterThan(densityAt(0.5, 400));
   });
 
-  it("warp dies in the sanctuary", () => {
-    expect(warpAt(1, tuning.sanctuaryRadius)).toBe(0);
+  it("warp still works far from origin", () => {
+    expect(warpAt(1, tuning.sanctuaryRadius)).toBeGreaterThan(0);
     expect(warpAt(1, 0)).toBeGreaterThan(0);
   });
 });

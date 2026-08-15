@@ -132,7 +132,6 @@ export function createObstacleField(seed: number): ObstacleField {
     const x = px + Math.cos(angle) * dist;
     const z = pz + Math.sin(angle) * dist;
 
-    if (Math.hypot(x, z) > tuning.sanctuaryRadius * 0.92) return;
     if (Math.hypot(x - px, z - pz) < tuning.clearBubble) return;
 
     for (const o of obstacles) {

@@ -45,8 +45,7 @@ export function densityAt(speed01: number, radius = 0): number {
   const curved = 1 - (1 - t) * (1 - t);
   const bySpeed = tuning.densityMin + (tuning.densityMax - tuning.densityMin) * curved;
   const radialT = clamp01(radius / tuning.densityRadialReach);
-  const raw = bySpeed + tuning.densityRadialExtra * radialT * radialT;
-  return raw * (1 - sanctuaryAt(radius) * 0.95);
+  return bySpeed + tuning.densityRadialExtra * radialT * radialT;
 }
 
 /** Spacing between spawn attempts — shrinks as density rises. */
@@ -57,10 +56,10 @@ export function spawnSpacingAt(speed01: number, radius = 0): number {
   return tuning.spawnSpacingMax + (tuning.spawnSpacingMin - tuning.spawnSpacingMax) * t;
 }
 
-/** Ground warp amplitude 0..1 from speed; dies in the sanctuary. */
-export function warpAt(speed01: number, radius = 0): number {
+/** Ground warp amplitude 0..1 from speed. */
+export function warpAt(speed01: number, _radius = 0): number {
   const t = clamp01(speed01);
-  return t * t * tuning.warpMax * (1 - sanctuaryAt(radius));
+  return t * t * tuning.warpMax;
 }
 
 /** Fraction of obstacles that should be movers at this speed. */

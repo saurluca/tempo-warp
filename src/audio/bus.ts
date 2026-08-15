@@ -7,6 +7,11 @@ export interface AudioBus {
   muted: boolean;
   track: TrackId;
   musicHold: number;
+  kick: number;
+  snare: number;
+  hat: number;
+  /** Beats since transport start — visuals lock to this, not wall time. */
+  beatPhase: number;
   unlock: () => Promise<void>;
   setFromPlay: (speed01: number, radius01: number, shattered: boolean, dt: number) => void;
   setMuted: (m: boolean) => void;
@@ -16,7 +21,7 @@ export interface AudioBus {
 
 /**
  * One journey mix. radius01 (peak-held) opens stems;
- * speed01 opens intensity; sanctuary resolves to a held chord.
+ * speed01 opens intensity. The outer rim does not mute the groove.
  */
 export function createAudioBus(initialTrack: TrackId): AudioBus {
   let unlocked = false;
@@ -113,22 +118,24 @@ export function createAudioBus(initialTrack: TrackId): AudioBus {
 
   let heartAcc = 0;
   let loop: Tone.Sequence | null = null;
+  let kickPulse = 0;
+  let snarePulse = 0;
+  let hatPulse = 0;
 
   const applyMix = () => {
     if (!unlocked || muted) return;
     const s = shattered ? 0 : speed01;
     const h = shattered ? musicHold * 0.35 : musicHold;
-    const sanctuary = !shattered && radius01 > 0.9;
     const duckAmt = shattered ? 0.12 : 1;
 
     duck.gain.rampTo(duckAmt, 0.08);
 
-    const kickOn = !sanctuary && h > 0.12;
-    const snareOn = !sanctuary && h > 0.28;
-    const hatOn = !sanctuary && h > 0.45;
+    const kickOn = h > 0.12;
+    const snareOn = h > 0.28;
+    const hatOn = h > 0.45;
     const bassOn = h > 0.22;
-    const leadOn = !sanctuary && h > 0.62;
-    const voiceOn = !sanctuary && h > 0.78;
+    const leadOn = h > 0.62;
+    const voiceOn = h > 0.78;
 
     kickGain.gain.rampTo(kickOn ? 0.42 + s * 0.38 : 0, 0.12);
     snareGain.gain.rampTo(snareOn ? 0.16 + s * 0.4 : 0, 0.12);
@@ -136,14 +143,14 @@ export function createAudioBus(initialTrack: TrackId): AudioBus {
     bassGain.gain.rampTo(shattered ? 0.06 : bassOn ? 0.18 + s * 0.26 : 0.05, 0.14);
     leadGain.gain.rampTo(leadOn ? s * s * 0.36 : 0, 0.16);
     voiceGain.gain.rampTo(voiceOn ? 0.1 + s * 0.18 : 0, 0.2);
-    padGain.gain.rampTo(sanctuary ? 0.34 : shattered ? 0.18 : 0.16 + (1 - s) * 0.1 + h * 0.06, 0.2);
-    resolveGain.gain.rampTo(sanctuary ? 0.2 : 0, 0.45);
+    padGain.gain.rampTo(shattered ? 0.18 : 0.16 + (1 - s) * 0.1 + h * 0.06, 0.2);
+    resolveGain.gain.rampTo(0, 0.2);
 
-    mixFilter.frequency.rampTo(shattered ? 280 : sanctuary ? 1400 : 1100 + s * 4400 + h * 400, 0.18);
-    padFilter.frequency.rampTo(sanctuary ? 880 : 320 + s * 900 + h * 200, 0.25);
+    mixFilter.frequency.rampTo(shattered ? 280 : 1100 + s * 4400 + h * 400, 0.18);
+    padFilter.frequency.rampTo(320 + s * 900 + h * 200, 0.25);
 
     const def = TRACKS[trackId];
-    Tone.Transport.bpm.rampTo(def.bpm * (1 + s * 0.05) * (sanctuary ? 0.92 : 1), 0.45);
+    Tone.Transport.bpm.rampTo(def.bpm * (1 + s * 0.05), 0.45);
     const padHz = Tone.Frequency(def.pad).toFrequency();
     pad.frequency.rampTo(padHz * (1 + h * 0.28), 0.5);
     resolve.frequency.rampTo(padHz * 1.5, 0.6);
@@ -165,17 +172,19 @@ export function createAudioBus(initialTrack: TrackId): AudioBus {
         const i = step as number;
         const s = speed01;
         const h = musicHold;
-        const sanctuary = !shattered && radius01 > 0.9;
-        if (shattered || sanctuary) return;
+        if (shattered) return;
 
         if (h > 0.12 && def.kick[i]) {
           kick.triggerAttackRelease("C1", "8n", time, 0.7 + s * 0.3);
+          kickPulse = 1;
         }
         if (h > 0.28 && def.snare[i]) {
           snare.triggerAttackRelease("16n", time, 0.45 + s * 0.4);
+          snarePulse = 1;
         }
         if (h > 0.45 && def.hat[i]) {
           hat.triggerAttackRelease("C5", "32n", time, 0.22 + s * 0.55);
+          hatPulse = 1;
         }
 
         const bassNote = def.bass[i % def.bass.length];
@@ -209,6 +218,19 @@ export function createAudioBus(initialTrack: TrackId): AudioBus {
     },
     get musicHold() {
       return musicHold;
+    },
+    get kick() {
+      return kickPulse;
+    },
+    get snare() {
+      return snarePulse;
+    },
+    get hat() {
+      return hatPulse;
+    },
+    get beatPhase() {
+      if (!unlocked) return 0;
+      return Tone.Transport.seconds * (Tone.Transport.bpm.value / 60);
     },
     async unlock() {
       if (unlocked) return;
@@ -254,10 +276,15 @@ export function createAudioBus(initialTrack: TrackId): AudioBus {
 
       if (!unlocked || muted) return;
 
+      kickPulse = Math.max(0, kickPulse - dt * 7);
+      snarePulse = Math.max(0, snarePulse - dt * 9);
+      hatPulse = Math.max(0, hatPulse - dt * 14);
+
       if (isShattered && !lastShattered) {
         heartGain.gain.rampTo(0.5, 0.02);
         heart.triggerAttackRelease("C1", "8n");
         heartAcc = 0;
+        kickPulse = 1;
       }
       lastShattered = isShattered;
 
@@ -266,6 +293,7 @@ export function createAudioBus(initialTrack: TrackId): AudioBus {
         if (heartAcc > 0.52) {
           heartAcc = 0;
           heart.triggerAttackRelease("C1", "16n");
+          kickPulse = 0.7;
         }
       } else {
         heartGain.gain.rampTo(0, 0.2);

@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { tuning } from "../tuning";
 
-const GROUND_PLANE = 400;
+const GROUND_PLANE = 800;
 /** Higher repeat = smaller world-space grid cells */
 const GROUND_REPEAT = 48;
 const GROUND_TILE = GROUND_PLANE / GROUND_REPEAT;
@@ -102,7 +102,7 @@ export function createGameScene(host: HTMLElement): GameScene {
   scene.add(ground);
 
   const parallax = new THREE.Mesh(
-    new THREE.PlaneGeometry(400, 400),
+    new THREE.PlaneGeometry(800, 800),
     new THREE.MeshBasicMaterial({
       color: 0x122033,
       transparent: true,
@@ -118,8 +118,8 @@ export function createGameScene(host: HTMLElement): GameScene {
   const placeGround = (x: number, z: number, worldFixed: boolean) => {
     ground.position.x = x;
     ground.position.z = z;
-    parallax.position.x = x * 0.85;
-    parallax.position.z = z * 0.85;
+    parallax.position.x = x;
+    parallax.position.z = z;
     if (worldFixed) {
       groundMap.offset.set(x / GROUND_TILE, -z / GROUND_TILE);
     } else {
