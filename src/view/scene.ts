@@ -1,54 +1,15 @@
 import * as THREE from "three";
 import { tuning } from "../tuning";
 
-const GROUND_PLANE = 800;
-/** Higher repeat = smaller world-space grid cells */
-const GROUND_REPEAT = 48;
-const GROUND_TILE = GROUND_PLANE / GROUND_REPEAT;
-
 export interface GameScene {
   renderer: THREE.WebGLRenderer;
   scene: THREE.Scene;
   camera: THREE.OrthographicCamera;
-  ground: THREE.Mesh;
   parallax: THREE.Mesh;
-  /** Mesh always under player; worldFixed scrolls the grid so it looks world-locked. */
-  placeGround: (x: number, z: number, worldFixed: boolean) => void;
-  setGrid: (on: boolean) => void;
+  placeGround: (x: number, z: number) => void;
   resize: () => void;
   followPlayer: (x: number, z: number, dt: number) => void;
   dispose: () => void;
-}
-
-function makeGridTexture(): THREE.CanvasTexture {
-  const size = 256;
-  const canvas = document.createElement("canvas");
-  canvas.width = size;
-  canvas.height = size;
-  const ctx = canvas.getContext("2d");
-  if (!ctx) {
-    throw new Error("2d context unavailable");
-  }
-  ctx.fillStyle = "#0c121c";
-  ctx.fillRect(0, 0, size, size);
-  ctx.strokeStyle = "#1a3048";
-  ctx.lineWidth = 1.5;
-  const step = 16;
-  for (let i = 0; i <= size; i += step) {
-    ctx.beginPath();
-    ctx.moveTo(i, 0);
-    ctx.lineTo(i, size);
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.moveTo(0, i);
-    ctx.lineTo(size, i);
-    ctx.stroke();
-  }
-  const tex = new THREE.CanvasTexture(canvas);
-  tex.wrapS = THREE.RepeatWrapping;
-  tex.wrapT = THREE.RepeatWrapping;
-  tex.colorSpace = THREE.SRGBColorSpace;
-  return tex;
 }
 
 export function createGameScene(host: HTMLElement): GameScene {
@@ -80,27 +41,6 @@ export function createGameScene(host: HTMLElement): GameScene {
   key.position.set(8, 20, -6);
   scene.add(ambient, key);
 
-  // Underlay only — animated warp mesh sits above (groundWarp.ts)
-  const groundMap = makeGridTexture();
-  groundMap.repeat.set(GROUND_REPEAT, GROUND_REPEAT);
-  const ground = new THREE.Mesh(
-    new THREE.PlaneGeometry(GROUND_PLANE, GROUND_PLANE, 1, 1),
-    new THREE.MeshStandardMaterial({
-      map: groundMap,
-      roughness: 0.95,
-      metalness: 0.02,
-      color: 0x445566,
-      transparent: true,
-      opacity: 0.35,
-      depthTest: false,
-      depthWrite: false,
-    }),
-  );
-  ground.rotation.x = -Math.PI / 2;
-  ground.position.y = -0.02;
-  ground.visible = false;
-  scene.add(ground);
-
   const parallax = new THREE.Mesh(
     new THREE.PlaneGeometry(800, 800),
     new THREE.MeshBasicMaterial({
@@ -115,16 +55,9 @@ export function createGameScene(host: HTMLElement): GameScene {
   parallax.position.y = -0.4;
   scene.add(parallax);
 
-  const placeGround = (x: number, z: number, worldFixed: boolean) => {
-    ground.position.x = x;
-    ground.position.z = z;
+  const placeGround = (x: number, z: number) => {
     parallax.position.x = x;
     parallax.position.z = z;
-    if (worldFixed) {
-      groundMap.offset.set(x / GROUND_TILE, -z / GROUND_TILE);
-    } else {
-      groundMap.offset.set(0, 0);
-    }
   };
 
   let camX = 0;
@@ -158,12 +91,8 @@ export function createGameScene(host: HTMLElement): GameScene {
     renderer,
     scene,
     camera,
-    ground,
     parallax,
     placeGround,
-    setGrid: (on) => {
-      ground.visible = on;
-    },
     resize,
     followPlayer,
     dispose: () => {

@@ -37,6 +37,11 @@ export const tuning = {
    * distance. Stops near-cursor orbit from reverse-accel dumping speed.
    */
   aimSoftZone: 3.5,
+  /** Touch stick — CSS px to saturate; deadzone ignores tap jitter */
+  stickRadius: 80,
+  stickDeadzone: 10,
+  /** World metres to place aim so throw clears aimSoftZone */
+  stickReach: 12,
 
   /** Visual */
   hushColor: 0x3a6b8c,
@@ -80,11 +85,11 @@ export const tuning = {
    * scroll into view with reaction time (not pop onto the player).
    * With cameraHeight ~52, half-view ≈ 26; keep spawnRingMin above that.
    */
-  densityMin: 4,
-  densityMax: 14,
+  densityMin: 6,
+  densityMax: 18,
   /** Extra bodies as you leave the origin (center stays open) */
   densityRadialReach: 2000,
-  densityRadialExtra: 32,
+  densityRadialExtra: 38,
 
   /**
    * Journey bands from origin. Edges = hush|drift|surge|veil then sanctuary.
@@ -109,10 +114,10 @@ export const tuning = {
   /** DJ handoff: duck out, swap pattern, then stems climb like a new run. */
   djFadeOut: 0.85,
   djFadeIn: 1.35,
-  /** arrange01 rise (1/s) after a spin — hush bed → full mix in ~20s */
-  arrangeRise: 0.038,
+  /** arrange01 rise (1/s) after a spin — hush bed → full mix in ~14s */
+  arrangeRise: 0.055,
   /** Seconds a track must play before a current can spin the next one. */
-  djMinHold: 48,
+  djMinHold: 72,
   /** Extra current rims past the last band, so the set can keep moving. */
   currentRepeat: 700,
   /** After a hit, land this far through the previous band (0..1). */

@@ -1,14 +1,34 @@
 import * as THREE from "three";
 import type { Obstacle, ObstacleKind } from "../sim/types";
 import { tuning } from "../tuning";
-import { colorForRadius } from "./colors";
+
+export interface StemHits {
+  bass: number;
+  lead: number;
+  voice: number;
+  hat: number;
+}
 
 export interface ObstacleViews {
-  sync: (obstacles: Obstacle[], dt?: number) => void;
-  /** Expanding shatter wave — glyphs the front crosses keep a new color. */
+  sync: (obstacles: Obstacle[], dt?: number, stems?: StemHits) => void;
   pulse: (x: number, z: number) => void;
   dispose: () => void;
 }
+
+/** Each glyph kind listens to a different stem (kick/snare stay on the floor). */
+const STEM_OF: Record<ObstacleKind, keyof StemHits> = {
+  spire: "bass",
+  monolith: "voice",
+  shard: "lead",
+  ring: "hat",
+};
+
+const KIND_COLOR: Record<ObstacleKind, number> = {
+  spire: 0x4da3ff,
+  monolith: 0xc86bff,
+  shard: 0xff9a3c,
+  ring: 0x2ee6a6,
+};
 
 function disposeObject(obj: THREE.Object3D): void {
   obj.traverse((child) => {
@@ -151,39 +171,24 @@ export function createObstacleViews(scene: THREE.Scene): ObstacleViews {
   scene.add(group);
   const glyphs = new Map<number, Glyph>();
   const kinds = new Map<number, ObstacleKind>();
-  const stains = new Map<number, THREE.Color>();
-  const marked = new Set<number>();
   const hot = new THREE.Color();
+  const flash = new THREE.Color(0xffffff);
   const ring = makePulseRing();
   group.add(ring.mesh);
 
-  let pulseX = 0;
-  let pulseZ = 0;
   let pulseR = 0;
-  let pulseHue = 0;
   let pulsing = false;
 
-  const paint = (o: Obstacle, r: number) => {
-    const c = new THREE.Color().setHSL((pulseHue + r * 0.004) % 1, 0.52, 0.56);
-    stains.set(o.id, c);
-    marked.add(o.id);
-  };
-
   const pulse = (x: number, z: number) => {
-    pulseX = x;
-    pulseZ = z;
     pulseR = 0;
-    pulseHue = Math.random();
     pulsing = true;
-    marked.clear();
     ring.mesh.position.set(x, 1.02, z);
     ring.mesh.visible = true;
     ring.mat.opacity = 0.85;
   };
 
-  const sync = (obstacles: Obstacle[], dt = 0) => {
+  const sync = (obstacles: Obstacle[], dt = 0, stems: StemHits = { bass: 0, lead: 0, voice: 0, hat: 0 }) => {
     if (pulsing) {
-      const prev = pulseR;
       pulseR += dt * tuning.shatterPulseSpeed;
       if (pulseR >= tuning.shatterPulseMax) {
         pulsing = false;
@@ -191,11 +196,6 @@ export function createObstacleViews(scene: THREE.Scene): ObstacleViews {
       } else {
         ring.mesh.scale.setScalar(Math.max(0.01, pulseR));
         ring.mat.opacity = 0.85 * (1 - pulseR / tuning.shatterPulseMax);
-        for (const o of obstacles) {
-          if (marked.has(o.id)) continue;
-          const d = Math.hypot(o.x - pulseX, o.z - pulseZ);
-          if (d >= prev && d < pulseR) paint(o, d);
-        }
       }
     }
 
@@ -217,29 +217,14 @@ export function createObstacleViews(scene: THREE.Scene): ObstacleViews {
       glyph.root.position.set(o.x, 1.0, o.z);
       if (o.kind === "shard") glyph.root.rotation.y += 0.012;
 
-      const stain = stains.get(o.id);
-      if (o.moving) {
-        hot.setHex(o.telegraphT > 0.75 ? 0xffdd66 : 0xff6a3a);
-        if (stain) hot.copy(stain).lerp(hot, 0.35);
-        glyph.fillMat.color.copy(hot);
-        glyph.rimMat.color.copy(hot);
-        glyph.fillMat.opacity = tuning.hazardFillOpacity * (1 + o.telegraphT * 0.4);
-        glyph.rimMat.opacity = tuning.hazardRimOpacity;
-        glyph.root.scale.setScalar(1 + o.telegraphT * 0.05);
-      } else if (stain) {
-        glyph.fillMat.color.copy(stain);
-        glyph.rimMat.color.copy(stain);
-        glyph.fillMat.opacity = tuning.hazardFillOpacity;
-        glyph.rimMat.opacity = tuning.hazardRimOpacity;
-        glyph.root.scale.setScalar(1);
-      } else {
-        const col = colorForRadius(Math.hypot(o.x, o.z));
-        glyph.fillMat.color.copy(col);
-        glyph.rimMat.color.copy(col);
-        glyph.fillMat.opacity = tuning.hazardFillOpacity;
-        glyph.rimMat.opacity = tuning.hazardRimOpacity;
-        glyph.root.scale.setScalar(1);
-      }
+      const hit = stems[STEM_OF[o.kind]] ?? 0;
+      hot.setHex(KIND_COLOR[o.kind]);
+      if (hit > 0.02) hot.lerp(flash, hit * 0.55);
+      glyph.fillMat.color.copy(hot);
+      glyph.rimMat.color.copy(hot);
+      glyph.fillMat.opacity = tuning.hazardFillOpacity * (1 + o.telegraphT * 0.4 + hit * 0.4);
+      glyph.rimMat.opacity = tuning.hazardRimOpacity;
+      glyph.root.scale.setScalar(1 + o.telegraphT * 0.05 + hit * 0.14);
     }
 
     for (const [id, glyph] of glyphs) {
@@ -248,8 +233,6 @@ export function createObstacleViews(scene: THREE.Scene): ObstacleViews {
         disposeObject(glyph.root);
         glyphs.delete(id);
         kinds.delete(id);
-        stains.delete(id);
-        marked.delete(id);
       }
     }
   };
@@ -264,7 +247,6 @@ export function createObstacleViews(scene: THREE.Scene): ObstacleViews {
       }
       glyphs.clear();
       kinds.clear();
-      stains.clear();
       group.remove(ring.mesh);
       ring.geo.dispose();
       ring.mat.dispose();

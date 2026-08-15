@@ -40,20 +40,10 @@ const player = createPlayer();
 const field = createObstacleField(flags.seed);
 const obstacleViews = createObstacleViews(game.scene);
 const audio = createAudioBus(flags.track);
-let gridOn = false;
-const debug = createDebugOverlay(
-  flags.debug,
-  () => {
-    const id = audio.cycleTrack();
-    console.info("[tempo-warp] track", id);
-  },
-  () => {
-    gridOn = !gridOn;
-    game.setGrid(gridOn);
-    groundWarp.setGrid(gridOn);
-    return gridOn;
-  },
-);
+const debug = createDebugOverlay(flags.debug, () => {
+  const id = audio.cycleTrack();
+  console.info("[tempo-warp] track", id);
+});
 console.info("[tempo-warp] music", flags.track);
 const flashClear = new THREE.Color(0x1a3048);
 const clearMix = new THREE.Color();
@@ -64,36 +54,6 @@ let fpsSmooth = 60;
 let invuln = 0;
 let flashT = 0;
 let lastCurrent = 0;
-// ponytail: one boolean + button; no settings store
-let bgFollow = false;
-
-const bgBtn = document.createElement("button");
-bgBtn.type = "button";
-bgBtn.textContent = "BG: world";
-bgBtn.title = "Sticky = grid rides with you · World = endless fixed grid";
-bgBtn.style.cssText = [
-  "position:fixed",
-  "right:8px",
-  "top:8px",
-  "z-index:10",
-  "cursor:pointer",
-  "font:12px/1.2 monospace",
-  "color:#9ec9ff",
-  "background:#122033",
-  "border:1px solid #1a3048",
-  "padding:6px 10px",
-].join(";");
-const stopBoost = (e: Event) => {
-  e.preventDefault();
-  e.stopPropagation();
-};
-bgBtn.addEventListener("pointerdown", stopBoost);
-bgBtn.addEventListener("click", (e) => {
-  stopBoost(e);
-  bgFollow = !bgFollow;
-  bgBtn.textContent = bgFollow ? "BG: sticky" : "BG: world";
-});
-document.body.appendChild(bgBtn);
 
 const unlockOnce = () => {
   void audio.unlock();
@@ -208,12 +168,15 @@ startLoop(
     const beatLines =
       beatMode === "rings" ? (hold < 0.4 ? 1 : hold < 0.7 ? 2 : 3) + (current > 0.35 ? 1 : 0) : 0;
     groundWarp.setBeat(audio.kick, audio.snare, audio.hat, beatLines, dtReal);
-    // Mesh always under you (endless); sticky vs world is just UV scroll
-    const worldFixed = !bgFollow;
-    groundWarp.follow(player.x, player.z, worldFixed);
-    game.placeGround(player.x, player.z, worldFixed);
+    groundWarp.follow(player.x, player.z);
+    game.placeGround(player.x, player.z);
 
-    obstacleViews.sync(field.obstacles, dtReal);
+    obstacleViews.sync(field.obstacles, dtReal, {
+      bass: audio.bass,
+      lead: audio.lead,
+      voice: audio.voice,
+      hat: audio.hat,
+    });
     game.followPlayer(player.x, player.z, dtReal);
     const halfW = (game.camera.right - game.camera.left) * 0.5;
     beatWave.update(

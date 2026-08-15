@@ -12,6 +12,9 @@ export interface AudioBus {
   kick: number;
   snare: number;
   hat: number;
+  bass: number;
+  lead: number;
+  voice: number;
   /** Beats since transport start — visuals lock to this, not wall time. */
   beatPhase: number;
   unlock: () => Promise<void>;
@@ -155,6 +158,9 @@ export function createAudioBus(initialTrack: TrackId): AudioBus {
   let kickPulse = 0;
   let snarePulse = 0;
   let hatPulse = 0;
+  let bassPulse = 0;
+  let leadPulse = 0;
+  let voicePulse = 0;
   let kit: Kit = KITS.neon;
   let leadKind: LeadKind = "tri";
 
@@ -260,14 +266,17 @@ export function createAudioBus(initialTrack: TrackId): AudioBus {
         const bassNote = def.bass[i % def.bass.length];
         if (h > 0.22 && bassNote) {
           bass.triggerAttackRelease(bassNote, "8n", time, 0.5 + s * 0.35);
+          bassPulse = 1;
         }
 
         const leadNote = def.lead[i % def.lead.length];
         if (h > 0.62 && leadNote && s > 0.08) {
           fireLead(leadNote, time, 0.28 + s * 0.5);
+          leadPulse = 1;
         }
         if (h > 0.78 && leadNote && i % 4 === 0) {
           voice.triggerAttackRelease(leadNote, "8n", time, 0.22 + s * 0.3);
+          voicePulse = 1;
         }
       },
       steps,
@@ -300,6 +309,15 @@ export function createAudioBus(initialTrack: TrackId): AudioBus {
     },
     get hat() {
       return hatPulse;
+    },
+    get bass() {
+      return bassPulse;
+    },
+    get lead() {
+      return leadPulse;
+    },
+    get voice() {
+      return voicePulse;
     },
     get beatPhase() {
       if (!unlocked) return 0;
@@ -384,6 +402,9 @@ export function createAudioBus(initialTrack: TrackId): AudioBus {
       kickPulse = Math.max(0, kickPulse - dt * 7);
       snarePulse = Math.max(0, snarePulse - dt * 9);
       hatPulse = Math.max(0, hatPulse - dt * 14);
+      bassPulse = Math.max(0, bassPulse - dt * 6);
+      leadPulse = Math.max(0, leadPulse - dt * 8);
+      voicePulse = Math.max(0, voicePulse - dt * 5);
 
       if (isShattered && !lastShattered) {
         heartGain.gain.rampTo(0.5, 0.02);

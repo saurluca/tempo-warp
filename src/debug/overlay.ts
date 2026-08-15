@@ -16,11 +16,7 @@ export interface DebugOverlay {
   update: (p: PlayerState, fps: number, extra?: DebugExtras) => void;
 }
 
-export function createDebugOverlay(
-  enabled: boolean,
-  onCycleTrack?: () => void,
-  onToggleGrid?: () => boolean,
-): DebugOverlay {
+export function createDebugOverlay(enabled: boolean, onCycleTrack?: () => void): DebugOverlay {
   if (!enabled) {
     return {
       update: () => {},
@@ -59,26 +55,8 @@ export function createDebugOverlay(
     e.stopPropagation();
   });
 
-  const gridBtn = document.createElement("button");
-  gridBtn.type = "button";
-  gridBtn.textContent = "GRID: off";
-  gridBtn.title = "Hide / show the ground grid";
-  gridBtn.style.cssText = trackBtn.style.cssText;
-  gridBtn.style.marginLeft = "6px";
-  gridBtn.style.background = "#1a3048";
-  gridBtn.style.color = "#9ec9ff";
-  gridBtn.addEventListener("click", (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    const on = onToggleGrid?.() ?? true;
-    gridBtn.textContent = on ? "GRID: on" : "GRID: off";
-  });
-  gridBtn.addEventListener("pointerdown", (e) => {
-    e.stopPropagation();
-  });
-
   const row = document.createElement("div");
-  row.append(trackBtn, gridBtn);
+  row.append(trackBtn);
   root.append(stats, row);
   document.body.appendChild(root);
 
