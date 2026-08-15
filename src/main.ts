@@ -142,9 +142,12 @@ startLoop(
     } else if (invuln <= 0 && player.shatterT <= 0) {
       for (const o of field.obstacles) {
         if (playerHitsObstacle(player, o)) {
+          const hx = player.x;
+          const hz = player.z;
           applyImpact(player, o.x, o.z);
           separatePlayer(player, field.obstacles);
-          burst.trigger(player.x, player.z);
+          burst.trigger(hx, hz);
+          obstacleViews.pulse(hx, hz);
           flashT = 0.22;
           shatterCount += 1;
           invuln = tuning.shatterInvuln;
@@ -210,7 +213,7 @@ startLoop(
     groundWarp.follow(player.x, player.z, worldFixed);
     game.placeGround(player.x, player.z, worldFixed);
 
-    obstacleViews.sync(field.obstacles);
+    obstacleViews.sync(field.obstacles, dtReal);
     game.followPlayer(player.x, player.z, dtReal);
     const halfW = (game.camera.right - game.camera.left) * 0.5;
     beatWave.update(

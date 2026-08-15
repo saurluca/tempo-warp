@@ -4,7 +4,9 @@ import { tuning } from "../tuning";
 import { colorForRadius } from "./colors";
 
 export interface ObstacleViews {
-  sync: (obstacles: Obstacle[]) => void;
+  sync: (obstacles: Obstacle[], dt?: number) => void;
+  /** Expanding shatter wave — glyphs the front crosses keep a new color. */
+  pulse: (x: number, z: number) => void;
   dispose: () => void;
 }
 
@@ -119,14 +121,84 @@ function makeGlyph(kind: ObstacleKind, size: number): Glyph {
   return { root, fillMat, rimMat };
 }
 
+function makePulseRing(): { mesh: THREE.Line; geo: THREE.BufferGeometry; mat: THREE.LineBasicMaterial } {
+  const n = 64;
+  const pos = new Float32Array((n + 1) * 3);
+  for (let i = 0; i <= n; i++) {
+    const a = (i / n) * Math.PI * 2;
+    pos[i * 3] = Math.cos(a);
+    pos[i * 3 + 1] = 0.04;
+    pos[i * 3 + 2] = Math.sin(a);
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute("position", new THREE.BufferAttribute(pos, 3));
+  const mat = new THREE.LineBasicMaterial({
+    color: 0xffffff,
+    transparent: true,
+    opacity: 0,
+    depthTest: false,
+    depthWrite: false,
+  });
+  const mesh = new THREE.Line(geo, mat);
+  mesh.visible = false;
+  mesh.renderOrder = 6;
+  mesh.frustumCulled = false;
+  return { mesh, geo, mat };
+}
+
 export function createObstacleViews(scene: THREE.Scene): ObstacleViews {
   const group = new THREE.Group();
   scene.add(group);
   const glyphs = new Map<number, Glyph>();
   const kinds = new Map<number, ObstacleKind>();
+  const stains = new Map<number, THREE.Color>();
+  const marked = new Set<number>();
   const hot = new THREE.Color();
+  const ring = makePulseRing();
+  group.add(ring.mesh);
 
-  const sync = (obstacles: Obstacle[]) => {
+  let pulseX = 0;
+  let pulseZ = 0;
+  let pulseR = 0;
+  let pulseHue = 0;
+  let pulsing = false;
+
+  const paint = (o: Obstacle, r: number) => {
+    const c = new THREE.Color().setHSL((pulseHue + r * 0.004) % 1, 0.52, 0.56);
+    stains.set(o.id, c);
+    marked.add(o.id);
+  };
+
+  const pulse = (x: number, z: number) => {
+    pulseX = x;
+    pulseZ = z;
+    pulseR = 0;
+    pulseHue = Math.random();
+    pulsing = true;
+    marked.clear();
+    ring.mesh.position.set(x, 1.02, z);
+    ring.mesh.visible = true;
+    ring.mat.opacity = 0.85;
+  };
+
+  const sync = (obstacles: Obstacle[], dt = 0) => {
+    if (pulsing) {
+      const prev = pulseR;
+      pulseR += dt * tuning.shatterPulseSpeed;
+      if (pulseR >= tuning.shatterPulseMax) {
+        pulsing = false;
+        ring.mesh.visible = false;
+      } else {
+        ring.mesh.scale.setScalar(Math.max(0.01, pulseR));
+        ring.mat.opacity = 0.85 * (1 - pulseR / tuning.shatterPulseMax);
+        for (const o of obstacles) {
+          if (marked.has(o.id)) continue;
+          const d = Math.hypot(o.x - pulseX, o.z - pulseZ);
+          if (d >= prev && d < pulseR) paint(o, d);
+        }
+      }
+    }
+
     const seen = new Set<number>();
     for (const o of obstacles) {
       seen.add(o.id);
@@ -145,13 +217,21 @@ export function createObstacleViews(scene: THREE.Scene): ObstacleViews {
       glyph.root.position.set(o.x, 1.0, o.z);
       if (o.kind === "shard") glyph.root.rotation.y += 0.012;
 
+      const stain = stains.get(o.id);
       if (o.moving) {
         hot.setHex(o.telegraphT > 0.75 ? 0xffdd66 : 0xff6a3a);
+        if (stain) hot.copy(stain).lerp(hot, 0.35);
         glyph.fillMat.color.copy(hot);
         glyph.rimMat.color.copy(hot);
         glyph.fillMat.opacity = tuning.hazardFillOpacity * (1 + o.telegraphT * 0.4);
         glyph.rimMat.opacity = tuning.hazardRimOpacity;
         glyph.root.scale.setScalar(1 + o.telegraphT * 0.05);
+      } else if (stain) {
+        glyph.fillMat.color.copy(stain);
+        glyph.rimMat.color.copy(stain);
+        glyph.fillMat.opacity = tuning.hazardFillOpacity;
+        glyph.rimMat.opacity = tuning.hazardRimOpacity;
+        glyph.root.scale.setScalar(1);
       } else {
         const col = colorForRadius(Math.hypot(o.x, o.z));
         glyph.fillMat.color.copy(col);
@@ -168,12 +248,15 @@ export function createObstacleViews(scene: THREE.Scene): ObstacleViews {
         disposeObject(glyph.root);
         glyphs.delete(id);
         kinds.delete(id);
+        stains.delete(id);
+        marked.delete(id);
       }
     }
   };
 
   return {
     sync,
+    pulse,
     dispose: () => {
       for (const glyph of glyphs.values()) {
         group.remove(glyph.root);
@@ -181,6 +264,10 @@ export function createObstacleViews(scene: THREE.Scene): ObstacleViews {
       }
       glyphs.clear();
       kinds.clear();
+      stains.clear();
+      group.remove(ring.mesh);
+      ring.geo.dispose();
+      ring.mat.dispose();
       scene.remove(group);
     },
   };

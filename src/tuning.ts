@@ -68,6 +68,9 @@ export const tuning = {
   impactMinSpeed: 6,
   /** Throttle left after a hit (spool not fully wiped) */
   impactThrottleKeep: 0.2,
+  /** Shatter shockwave — recolors glyphs the front crosses */
+  shatterPulseSpeed: 92,
+  shatterPulseMax: 140,
 
   /** Audio */
   audioFilterOpen: 1400,

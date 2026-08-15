@@ -206,10 +206,10 @@ export function createAudioBus(initialTrack: TrackId): AudioBus {
     kickGain.gain.rampTo(kickOn ? 0.42 + s * 0.38 : 0, 0.12);
     snareGain.gain.rampTo(snareOn ? 0.16 + s * 0.4 : 0, 0.12);
     hatGain.gain.rampTo(hatOn ? 0.06 + s * 0.4 : 0, 0.12);
-    bassGain.gain.rampTo(shattered ? 0.06 : bassOn ? 0.18 + s * 0.26 : 0.05, 0.14);
+    bassGain.gain.rampTo(shattered ? 0.06 : bassOn ? 0.18 + s * 0.26 : 0, 0.14);
     leadGain.gain.rampTo(leadOn ? s * s * 0.36 : 0, 0.16);
     voiceGain.gain.rampTo(voiceOn ? 0.1 + s * 0.18 : 0, 0.2);
-    padGain.gain.rampTo(shattered ? 0.18 : 0.16 + (1 - s) * 0.1 + h * 0.06, 0.2);
+    padGain.gain.rampTo(0, 0.12);
     resolveGain.gain.rampTo(0, 0.2);
 
     const open = shattered ? 280 : 1100 + s * 4400 + h * 400;
@@ -308,8 +308,6 @@ export function createAudioBus(initialTrack: TrackId): AudioBus {
     async unlock() {
       if (unlocked) return;
       await Tone.start();
-      pad.start();
-      resolve.start();
       buildLoop(trackId);
       if (Tone.Transport.state !== "started") {
         Tone.Transport.start();
