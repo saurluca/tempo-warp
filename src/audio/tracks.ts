@@ -770,14 +770,14 @@ export function prevTrack(current: TrackId): TrackId {
   return TRACK_IDS[Math.max(0, i - 1)]!;
 }
 
-/** Seconds on a track before each stem. Gaps grow: 5, 7, 10, 14. */
+/** Seconds on a track before each stem. Gaps grow; last stem leaves room for djVoiceTail. */
 export const STEMS = [
   { id: "kick", t: 0, kind: null },
   { id: "bass", t: 0, kind: "spire" },
-  { id: "snare", t: 5, kind: "ring" },
-  { id: "hat", t: 12, kind: "ring" },
-  { id: "lead", t: 22, kind: "shard" },
-  { id: "voice", t: 36, kind: "monolith" },
+  { id: "snare", t: 4, kind: "ring" },
+  { id: "hat", t: 10, kind: "ring" },
+  { id: "lead", t: 18, kind: "shard" },
+  { id: "voice", t: 29, kind: "monolith" },
 ] as const;
 
 /** Bodies show this many seconds before you hear that stem. */
@@ -797,11 +797,20 @@ export function dueKindsAt(arrangeT: number): Array<"spire" | "ring" | "shard" |
   return out;
 }
 
-/** Survive this long without a hit. More open stems = a longer stage. */
-export function djHoldFor(arrangeT: number): number {
-  let parts = 0;
-  for (const s of STEMS) if (arrangeT >= s.t) parts += 1;
-  if (parts < 1) parts = 1;
-  const hold = tuning.djHoldBase + (parts - 1) * tuning.djHoldPerPart;
-  return parts >= STEMS.length ? hold - 9 : hold;
+/** Clean-run length. Voice is in for djVoiceTail seconds before the spin. */
+export function djHoldFor(_arrangeT = 0): number {
+  return STEMS[STEMS.length - 1]!.t + tuning.djVoiceTail;
+}
+
+/** Drop to the previous stem open time. Bass/kick stay at 0. */
+export function stepBackArrange(arrangeT: number): number {
+  let prev = 0;
+  let cur = 0;
+  for (const s of STEMS) {
+    if (s.t <= arrangeT && s.t > cur) {
+      prev = cur;
+      cur = s.t;
+    }
+  }
+  return prev;
 }

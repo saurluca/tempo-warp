@@ -3,37 +3,52 @@ import {
   bandAt,
   currentIndex,
   currentStrength,
-  densityAt,
+  densityAfterHit,
+  densityGrowRate,
   inwardBandRadius,
   moverChanceAt,
   radius01At,
   spawnSpacingAt,
+  stepDensity,
   warpAt,
 } from "../../src/sim/world";
 import { tuning } from "../../src/tuning";
 
 describe("world curves", () => {
-  it("density increases with speed01", () => {
-    expect(densityAt(0)).toBeLessThan(densityAt(0.5));
-    expect(densityAt(0.5)).toBeLessThan(densityAt(1));
+  it("grow rate is fastest at the start and still positive when dense", () => {
+    const start = densityGrowRate(tuning.densityMin, 1);
+    const mid = densityGrowRate(tuning.densityMin + 40, 1);
+    const far = densityGrowRate(400, 1);
+    expect(start).toBeGreaterThan(mid);
+    expect(mid).toBeGreaterThan(far);
+    expect(far).toBeGreaterThan(0);
   });
 
-  it("hit ease thins density without wiping it", () => {
-    const full = densityAt(1, 800, 0);
-    const one = densityAt(1, 800, 0.28);
-    const max = densityAt(1, 800, 1);
-    expect(one).toBeLessThan(full);
-    expect(max).toBeLessThan(one);
-    expect(max).toBeGreaterThan(full * 0.65);
+  it("standing still does not add objects", () => {
+    expect(densityGrowRate(tuning.densityMin, 0)).toBe(0);
+    expect(stepDensity(12, 0, 1)).toBe(12);
   });
 
-  it("density grows with distance from origin", () => {
-    expect(densityAt(0.4, 0)).toBeLessThan(densityAt(0.4, 400));
-    expect(densityAt(0.4, 400)).toBeLessThan(densityAt(0.4, 1600));
+  it("hit drops the current count by 18% and the next step uses that", () => {
+    const before = 40;
+    const after = densityAfterHit(before);
+    expect(after).toBeCloseTo(before * 0.82);
+    expect(densityAfterHit(tuning.densityMin)).toBe(tuning.densityMin);
+    const dt = 0.5;
+    expect(stepDensity(after, 1, dt)).toBeCloseTo(after + densityGrowRate(after, 1) * dt);
   });
 
-  it("spawn spacing shrinks with speed01", () => {
-    expect(spawnSpacingAt(0)).toBeGreaterThan(spawnSpacingAt(1));
+  it("density keeps climbing with no ceiling", () => {
+    let d = tuning.densityMin;
+    for (let i = 0; i < 200; i++) d = stepDensity(d, 1, 1);
+    expect(d).toBeGreaterThan(80);
+    expect(densityGrowRate(d, 1)).toBeGreaterThan(0);
+  });
+
+  it("spawn spacing shrinks as the field fills", () => {
+    expect(spawnSpacingAt(tuning.densityMin)).toBeGreaterThan(spawnSpacingAt(40));
+    expect(spawnSpacingAt(40)).toBeGreaterThan(spawnSpacingAt(200));
+    expect(spawnSpacingAt(200)).toBeGreaterThan(tuning.spawnSpacingMin);
   });
 
   it("warp is zero at rest and max at full speed", () => {
@@ -64,10 +79,6 @@ describe("world curves", () => {
     expect(dest).toBeLessThan(tuning.bandEdges[1]!);
     expect(dest).toBeGreaterThan(tuning.bandEdges[0]!);
     expect(inwardBandRadius(20)).toBe(20);
-  });
-
-  it("density stays high past the outer rim", () => {
-    expect(densityAt(0.5, tuning.sanctuaryRadius + 400)).toBeGreaterThan(densityAt(0.5, 400));
   });
 
   it("warp still works far from origin", () => {

@@ -2,11 +2,11 @@ import { dueKindsAt } from "../audio/tracks";
 import { mulberry32 } from "../rng";
 import { tuning } from "../tuning";
 import type { Obstacle, ObstacleKind } from "./types";
-import { densityAt, moverChanceAt, spawnSpacingAt } from "./world";
+import { densityAfterHit, moverChanceAt, spawnSpacingAt, stepDensity } from "./world";
 
 export interface ObstacleField {
   obstacles: Obstacle[];
-  ease: number;
+  density: number;
   noteHit: () => void;
   step: (
     dt: number,
@@ -116,7 +116,7 @@ export function createObstacleField(seed: number): ObstacleField {
   const obstacles: Obstacle[] = [];
   let nextId = 1;
   let spawnAcc = 0;
-  let ease = 0;
+  let density = tuning.densityMin;
 
   for (let i = 0; i < tuning.safeRingCount; i++) {
     const angle = (i / tuning.safeRingCount) * Math.PI * 2 + rand() * 0.25;
@@ -155,8 +155,7 @@ export function createObstacleField(seed: number): ObstacleField {
     arrangeT: number,
     forcedKind?: ObstacleKind,
   ) => {
-    const radius = Math.hypot(px, pz);
-    const target = Math.floor(densityAt(speed01, radius, ease));
+    const target = Math.floor(density);
     const slack = forcedKind ? 3 : 0;
     if (obstacles.length >= target + slack) return false;
 
@@ -179,25 +178,24 @@ export function createObstacleField(seed: number): ObstacleField {
 
   return {
     obstacles,
-    get ease() {
-      return ease;
+    get density() {
+      return density;
     },
     noteHit() {
-      ease = Math.min(1, ease + tuning.densityEaseHit);
+      density = densityAfterHit(density);
     },
     step(dt, time, px, pz, speed01, headingX, headingZ, arrangeT = 99) {
-      ease = Math.max(0, ease - dt * tuning.densityEaseDecay);
+      density = stepDensity(density, speed01, dt);
       recycleOrCull(px, pz);
 
-      const radius = Math.hypot(px, pz);
-      const spacing = spawnSpacingAt(speed01, radius, ease);
+      const spacing = spawnSpacingAt(density);
       spawnAcc += Math.max(speed01, 0.08) * tuning.maxSpeed * dt;
       while (spawnAcc >= spacing) {
         spawnAcc -= spacing;
         trySpawn(px, pz, speed01, headingX, headingZ, arrangeT);
       }
 
-      if (obstacles.length < densityAt(speed01, radius, ease) * 0.7) {
+      if (obstacles.length < density * 0.7) {
         trySpawn(px, pz, speed01, headingX, headingZ, arrangeT);
       }
 

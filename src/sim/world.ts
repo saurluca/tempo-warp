@@ -75,21 +75,25 @@ export function inwardBandRadius(radius: number): number {
   return radius;
 }
 
-/** Ease-out so early boost stays timid; late boost gets dense. Radius = |origin|. */
-export function densityAt(speed01: number, radius = 0, ease = 0): number {
-  const t = clamp01(speed01);
-  const curved = 1 - (1 - t) * (1 - t);
-  const bySpeed = tuning.densityMin + (tuning.densityMax - tuning.densityMin) * curved;
-  const radialT = clamp01(radius / tuning.densityRadialReach);
-  const raw = bySpeed + tuning.densityRadialExtra * radialT * radialT;
-  return raw * (1 - clamp01(ease) * tuning.densityEaseCut);
+/** Objects/s added at this count. Fastest at densityMin, always > 0 while moving. */
+export function densityGrowRate(density: number, speed01: number): number {
+  const extra = Math.max(0, density - tuning.densityMin);
+  return Math.max(0, speed01) * tuning.densityGrow / (1 + extra / tuning.densityGrowScale);
 }
 
-/** Spacing between spawn attempts — shrinks as density rises. */
-export function spawnSpacingAt(speed01: number, radius = 0, ease = 0): number {
-  const d = densityAt(speed01, radius, ease);
-  const dMax = tuning.densityMax + tuning.densityRadialExtra;
-  const t = (d - tuning.densityMin) / Math.max(0.0001, dMax - tuning.densityMin);
+export function stepDensity(density: number, speed01: number, dt: number): number {
+  return density + densityGrowRate(density, speed01) * dt;
+}
+
+/** Drop the current count by a fraction. Next grow uses that number — no catch-up. */
+export function densityAfterHit(density: number): number {
+  return Math.max(tuning.densityMin, density * (1 - tuning.densityHitCut));
+}
+
+/** Spacing between spawn attempts — shrinks toward min as the field fills. */
+export function spawnSpacingAt(density: number): number {
+  const extra = Math.max(0, density - tuning.densityMin);
+  const t = extra / (extra + tuning.densityGrowScale);
   return tuning.spawnSpacingMax + (tuning.spawnSpacingMin - tuning.spawnSpacingMax) * t;
 }
 

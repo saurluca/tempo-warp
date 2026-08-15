@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { STEM_VISUAL_LEAD } from "../../src/audio/tracks";
+import { STEM_VISUAL_LEAD, STEMS } from "../../src/audio/tracks";
 import { dueKinds, pickKind, pickNeededKind } from "../../src/sim/obstacles";
 import type { Obstacle, ObstacleKind } from "../../src/sim/types";
 
@@ -42,7 +42,8 @@ describe("pickKind follows the open stems", () => {
   });
 
   it("rings show up before snares open", () => {
-    const preview = 5 - STEM_VISUAL_LEAD;
+    const snare = STEMS.find((s) => s.id === "snare")!.t;
+    const preview = snare - STEM_VISUAL_LEAD;
     expect(dueKinds(preview)).toEqual(["spire", "ring"]);
     const c = counts(preview);
     expect(c.ring / 4000).toBeGreaterThan(0.25);

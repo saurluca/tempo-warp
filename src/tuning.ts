@@ -88,14 +88,12 @@ export const tuning = {
    * With cameraHeight ~52, half-view ≈ 26; keep spawnRingMin above that.
    */
   densityMin: 6,
-  densityMax: 18,
-  /** Hit ease: only new spawns. One hit is a nudge; stacked hits cap modestly. */
-  densityEaseHit: 0.28,
-  densityEaseCut: 0.3,
-  densityEaseDecay: 0.055,
-  /** Extra bodies as you leave the origin (center stays open) */
-  densityRadialReach: 2000,
-  densityRadialExtra: 38,
+  /** Objects/s added at densityMin while at full speed. Slows as the field fills; never hits 0. */
+  densityGrow: 1.4,
+  /** Extra objects before the grow rate halves. */
+  densityGrowScale: 38,
+  /** Hit drops the current count by this fraction. Grow resumes from there. */
+  densityHitCut: 0.18,
 
   /**
    * Journey bands from origin. Edges = hush|drift|surge|veil then sanctuary.
@@ -114,9 +112,8 @@ export const tuning = {
   /** DJ handoff: duck out, swap pattern, then stems climb like a new run. */
   djFadeOut: 2.4,
   djFadeIn: 3.2,
-  /** Survive seconds without a hit: hush is short, full mix is longest. */
-  djHoldBase: 16,
-  djHoldPerPart: 7,
+  /** Voice (and the full mix) must be in for at least this long before a spin. */
+  djVoiceTail: 8,
   /** Extra current rims past the last band, so the set can keep moving. */
   currentRepeat: 700,
   /** After a hit, land this far through the previous band (0..1). */

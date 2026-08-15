@@ -7,7 +7,7 @@ import { startLoop } from "./loop";
 import { playerOverlapsAny, playerSweptObstacle, separatePlayer } from "./sim/collide";
 import { createObstacleField } from "./sim/obstacles";
 import { applyImpact, createPlayer, stepPlayer } from "./sim/player";
-import { currentStrength, densityAt, radius01At, radiusOf, warpAt } from "./sim/world";
+import { currentStrength, radius01At, radiusOf, warpAt } from "./sim/world";
 import { tuning } from "./tuning";
 import { clearForRadius, colorForRadius } from "./view/colors";
 import { createBeatWave } from "./view/beatWave";
@@ -241,7 +241,7 @@ startLoop(
     trackChip.update(audio.track);
     debug.update(player, fpsSmooth, {
       obstacleCount: field.obstacles.length,
-      densityTarget: densityAt(player.speed01, radius, field.ease),
+      densityTarget: field.density,
       warp,
       track: audio.track,
       radius01: radius01At(radius),
@@ -260,7 +260,7 @@ startLoop(
       shatterT: player.shatterT,
       audioUnlocked: audio.unlocked,
       obstacleCount: field.obstacles.length,
-      densityTarget: densityAt(player.speed01, radius, field.ease),
+      densityTarget: field.density,
       warp,
       track: audio.track,
       radius01: radius01At(radius),

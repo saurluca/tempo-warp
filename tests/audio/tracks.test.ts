@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { djHoldFor, nextTrack, prevTrack, STEMS, TRACK_IDS, TRACKS } from "../../src/audio/tracks";
+import { djHoldFor, nextTrack, prevTrack, STEMS, stepBackArrange, TRACK_IDS, TRACKS } from "../../src/audio/tracks";
+import { tuning } from "../../src/tuning";
 
 describe("tracks", () => {
   it("every track is on a 16th grid and stems share a loop length", () => {
@@ -37,12 +38,17 @@ describe("tracks", () => {
     expect(prevTrack("razor")).toBe("surge");
   });
 
-  it("stage hold grows with open stems", () => {
-    const hush = djHoldFor(0);
-    const mid = djHoldFor(12);
-    const full = djHoldFor(36);
-    expect(hush).toBeLessThan(mid);
-    expect(mid).toBeLessThan(full);
+  it("voice is in for at least 8s before the track can spin", () => {
+    const voice = STEMS[STEMS.length - 1]!.t;
+    expect(djHoldFor() - voice).toBeGreaterThanOrEqual(tuning.djVoiceTail);
+    expect(tuning.djVoiceTail).toBeGreaterThanOrEqual(8);
+  });
+
+  it("a hit steps the arrangement back one stem", () => {
+    expect(stepBackArrange(0)).toBe(0);
+    expect(stepBackArrange(10)).toBe(4);
+    expect(stepBackArrange(18)).toBe(10);
+    expect(stepBackArrange(40)).toBe(18);
   });
 
   it("stem gaps get longer each time", () => {

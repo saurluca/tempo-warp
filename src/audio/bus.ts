@@ -1,6 +1,6 @@
 import * as Tone from "tone";
 import { tuning } from "../tuning";
-import { djHoldFor, KITS, nextTrack, stemOpen, STEMS, TRACKS, type Kit, type LeadKind, type TrackId } from "./tracks";
+import { djHoldFor, KITS, nextTrack, stemOpen, STEMS, stepBackArrange, TRACKS, type Kit, type LeadKind, type TrackId } from "./tracks";
 
 export interface AudioBus {
   unlocked: boolean;
@@ -467,7 +467,10 @@ export function createAudioBus(initialTrack: TrackId): AudioBus {
         if (mixOut <= 0) spin = "idle";
       }
 
-      if (isShattered && !lastShattered) onTrack = 0;
+      if (isShattered && !lastShattered) {
+        arrangeT = stepBackArrange(arrangeT);
+        onTrack = Math.min(onTrack, arrangeT);
+      }
       shattered = isShattered;
       if (unlocked && spin !== "out" && !isShattered) arrangeT += dt;
       if (unlocked && spin === "idle" && !isShattered) {
