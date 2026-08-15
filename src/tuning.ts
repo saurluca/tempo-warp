@@ -54,7 +54,7 @@ export const tuning = {
   stretchMax: 2.15,
   warpMax: 1,
   /** Visual blob (hitbox stays playerRadius) */
-  blobRadius: 2.15,
+  blobRadius: 1.7,
   /** Flat 2D glyphs */
   hazardFillOpacity: 0.55,
   hazardRimOpacity: 0.95,

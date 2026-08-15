@@ -2,7 +2,7 @@ import * as THREE from "three";
 import { tuning } from "../tuning";
 import { colorForJourney } from "./colors";
 
-const RING = 48;
+const RING = 72;
 const LAYERS = [
   { scale: 1, dark: 0.45, light: 0, opacity: 0.72 },
   { scale: 0.68, dark: 0, light: 0.08, opacity: 0.92 },
@@ -25,18 +25,24 @@ export interface PlayerBlob {
   dispose: () => void;
 }
 
+/** World metres from craft center to just inside the droplet tip. */
+export function cometTailBehind(speed01: number): number {
+  const R = tuning.blobRadius;
+  const drop = speed01 * speed01 * (3 - 2 * speed01);
+  const tailLen = R * (0.68 + speed01 * 1.95);
+  return R + tailLen * drop - 0.22;
+}
+
 function writeComet(
   positions: Float32Array,
   scale: number,
   visualSpeed: number,
-  sanctuary: number,
   wobble: number,
 ): void {
   const R = tuning.blobRadius * scale;
-  const s01 = visualSpeed * (1 - sanctuary);
-  const headR = R * (0.58 - s01 * 0.22);
-  const tailLen = R * (0.45 + s01 * 1.55) * (1 - sanctuary * 0.85);
-  const headSquash = 1 - s01 * 0.28;
+  const s01 = visualSpeed;
+  const drop = s01 * s01 * (3 - 2 * s01);
+  const tailLen = R * (0.68 + s01 * 1.95);
 
   positions[0] = 0;
   positions[1] = 0;
@@ -47,27 +53,17 @@ function writeComet(
     const c = Math.cos(t);
     const s = Math.sin(t);
     const o = (1 + i) * 3;
-    let x: number;
-    let z: number;
-    if (c > -0.18) {
-      x = s * headR * headSquash;
-      z = c * headR;
-    } else {
-      const u = (-c - 0.18) / 0.82;
-      const steps = 4 + Math.round(s01 * 3);
-      const step = Math.ceil(u * steps) / steps;
-      const halfW = headR * headSquash * Math.pow(1 - step, 1.15 + s01 * 0.7);
-      const flicker = 1 + Math.sin(wobble * 2.4 + step * 5) * (0.04 + s01 * 0.1) * (1 - sanctuary);
-      x = (s < 0 ? -1 : 1) * halfW * flicker;
-      z = -headR * 0.18 - u * tailLen;
-    }
-    positions[o] = x;
+    const breathe = 1 + Math.sin(wobble * 1.7 + t * 2) * (0.03 + s01 * 0.025);
+    const u = (1 - c) * 0.5;
+    const pinch = Math.pow(u, 1.45) * drop;
+    const halfW = R * Math.abs(s) * (1 - pinch * 0.72) * (1 - s01 * 0.1) * breathe;
+    positions[o] = (s < 0 ? -1 : 1) * halfW;
     positions[o + 1] = 0;
-    positions[o + 2] = z;
+    positions[o + 2] = c * R * breathe - tailLen * u * u * drop;
   }
 }
 
-/** Layered comet — round head, stepped tail. Journey colors, not fire. */
+/** Layered comet — one teardrop, no seam between head and tail. */
 export function createPlayerBlob(scene: THREE.Scene): PlayerBlob {
   const root = new THREE.Group();
   root.position.y = 1.2;
@@ -108,7 +104,7 @@ export function createPlayerBlob(scene: THREE.Scene): PlayerBlob {
 
       mid.copy(colorForJourney(visualSpeed, radius));
       for (const layer of layers) {
-        writeComet(layer.positions, layer.spec.scale, visualSpeed, 0, wobble);
+        writeComet(layer.positions, layer.spec.scale, visualSpeed, wobble);
         layer.geo.attributes.position!.needsUpdate = true;
         layer.geo.computeBoundingSphere();
         tint.copy(mid).multiplyScalar(1 - layer.spec.dark).lerp(white, layer.spec.light);
