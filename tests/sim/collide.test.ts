@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { playerHitsObstacle } from "../../src/sim/collide";
+import { playerHitsObstacle, playerSweptObstacle } from "../../src/sim/collide";
 import { createPlayer } from "../../src/sim/player";
 import type { Obstacle } from "../../src/sim/types";
 
@@ -41,5 +41,15 @@ describe("collision shapes", () => {
     // On the rim
     p.x = 1.6;
     expect(playerHitsObstacle(p, ring)).toBe(true);
+  });
+
+  it("swept path still clips a thin ring rim", () => {
+    const ring = obs({ kind: "ring", x: 0, z: 0, hitR: 2, hitInnerR: 1.2 });
+    expect(playerSweptObstacle(3.4, 0, 0.4, 0, ring)).toBe(true);
+  });
+
+  it("swept path can still pass the ring hole", () => {
+    const ring = obs({ kind: "ring", x: 0, z: 0, hitR: 2, hitInnerR: 1.2 });
+    expect(playerSweptObstacle(0, 0, 0.2, 0, ring)).toBe(false);
   });
 });

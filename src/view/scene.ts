@@ -46,7 +46,7 @@ export function createGameScene(host: HTMLElement): GameScene {
     new THREE.MeshBasicMaterial({
       color: 0x122033,
       transparent: true,
-      opacity: 0.55,
+      opacity: 0.32,
       depthTest: false,
       depthWrite: false,
     }),

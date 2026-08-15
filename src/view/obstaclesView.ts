@@ -108,6 +108,7 @@ function makeGlyph(kind: ObstacleKind, size: number): Glyph {
     opacity: tuning.hazardFillOpacity,
     depthTest: false,
     depthWrite: false,
+    fog: false,
     side: THREE.DoubleSide,
   });
   const rimMat = new THREE.LineBasicMaterial({
@@ -116,6 +117,7 @@ function makeGlyph(kind: ObstacleKind, size: number): Glyph {
     opacity: tuning.hazardRimOpacity,
     depthTest: false,
     depthWrite: false,
+    fog: false,
   });
 
   let fill: THREE.BufferGeometry;
@@ -166,6 +168,7 @@ function makePulseRing(): { mesh: THREE.Line; geo: THREE.BufferGeometry; mat: TH
     opacity: 0,
     depthTest: false,
     depthWrite: false,
+    fog: false,
   });
   const mesh = new THREE.Line(geo, mat);
   mesh.visible = false;

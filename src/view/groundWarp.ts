@@ -19,9 +19,9 @@ const warpShader = {
       float wy = p.y - uOrigin.y;
       vWorld = vec2(wx, wy);
       float beat = uTime * 6.2831853;
-      p.z += sin(wx * 0.35 + beat) * w * 0.55;
-      p.z += cos(wy * 0.28 - beat * 0.75) * w * 0.4;
-      p.y += sin(wx * 0.5 + wy * 0.5 + beat * 1.25) * w * 0.15;
+      p.z += sin(wx * 0.35 + beat) * w * 0.32;
+      p.z += cos(wy * 0.28 - beat * 0.75) * w * 0.22;
+      p.y += sin(wx * 0.5 + wy * 0.5 + beat * 1.25) * w * 0.08;
       gl_Position = projectionMatrix * modelViewMatrix * vec4(p, 1.0);
     }
   `,
@@ -45,10 +45,11 @@ const warpShader = {
       lines += uRingA.x * (1.0 - smoothstep(0.35, 1.15, abs(pr - uRingR.x)));
       lines += uRingA.y * (1.0 - smoothstep(0.35, 1.15, abs(pr - uRingR.y)));
       lines += uRingA.z * (1.0 - smoothstep(0.35, 1.15, abs(pr - uRingR.z)));
-      vec3 base = mix(uHush * 0.28, uBand * 0.42, 0.55 + uWarp * 0.25 + wash * 0.12 + uKick * 0.06);
-      vec3 col = mix(base, uBand * 0.7, lines * 0.45);
-      col += uBand * (uWarp * 0.06 + wash * 0.04 + uKick * 0.05 + uSnare * 0.03 + uHat * 0.015 + lines * 0.06);
-      gl_FragColor = vec4(col, 1.0);
+      vec3 base = mix(uHush * 0.22, uBand * 0.3, 0.48 + uWarp * 0.12 + wash * 0.045 + uKick * 0.035);
+      vec3 col = mix(base, uBand * 0.58, lines * 0.42);
+      col += uBand * (uWarp * 0.025 + wash * 0.013 + uKick * 0.025 + uSnare * 0.016 + uHat * 0.008 + lines * 0.055);
+      float a = 0.58 + wash * 0.08 + lines * 0.18;
+      gl_FragColor = vec4(col, a);
     }
   `,
 };
@@ -86,6 +87,7 @@ export function createGroundWarp(scene: THREE.Scene): GroundWarp {
     vertexShader: warpShader.vertexShader,
     fragmentShader: warpShader.fragmentShader,
     side: THREE.DoubleSide,
+    transparent: true,
     depthWrite: false,
     depthTest: false,
   });

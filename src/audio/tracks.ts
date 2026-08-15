@@ -802,5 +802,6 @@ export function djHoldFor(arrangeT: number): number {
   let parts = 0;
   for (const s of STEMS) if (arrangeT >= s.t) parts += 1;
   if (parts < 1) parts = 1;
-  return tuning.djHoldBase + (parts - 1) * tuning.djHoldPerPart;
+  const hold = tuning.djHoldBase + (parts - 1) * tuning.djHoldPerPart;
+  return parts >= STEMS.length ? hold - 9 : hold;
 }

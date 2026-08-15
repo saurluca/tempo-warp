@@ -67,18 +67,16 @@ function makeObstacle(
   const span = tuning.obstacleHalfMax - tuning.obstacleHalfMin;
   const size = tuning.obstacleHalfMin + rand() * span;
 
-  // Match neon meshes — oversized pads felt like ghost hits in empty air
-  let hitR = size * 0.72;
+  // Match the 2D glyphs, a hair inside the ink so glow doesn't fake-hit
+  let hitR = size * 1.05 * 0.94;
   let hitInnerR = 0;
   if (kind === "ring") {
-    // TorusGeometry(size * 1.05, size * 0.22)
-    hitR = size * 1.05 + size * 0.22;
-    hitInnerR = Math.max(0, size * 1.05 - size * 0.22);
+    hitR = size * 1.15 * 0.96;
+    hitInnerR = size * 0.55 * 1.04;
   } else if (kind === "monolith") {
-    // BoxGeometry half-extent on XZ is size * 0.35
-    hitR = size * 0.35;
+    hitR = Math.hypot(size * 0.42, size * 0.95) * 0.94;
   } else if (kind === "shard") {
-    hitR = size * 0.5;
+    hitR = Math.hypot(size * 1.05 * 0.9, size * 1.05 * 0.7) * 0.94;
   }
 
   return {

@@ -56,10 +56,10 @@ export const tuning = {
   /** Visual blob (hitbox stays playerRadius) */
   blobRadius: 1.7,
   /** Flat 2D glyphs */
-  hazardFillOpacity: 0.55,
+  hazardFillOpacity: 0.88,
   hazardRimOpacity: 0.95,
   /** Lower = see farther; keep hazards readable before they reach you */
-  fogDensity: 0.005,
+  fogDensity: 0.003,
 
   /** Camera — larger viewSize = wider overview (everything reads smaller) */
   cameraHeight: 64,

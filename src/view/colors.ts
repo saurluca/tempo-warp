@@ -46,9 +46,22 @@ export function clearForRadius(radius: number): THREE.Color {
   return tmp.copy(a).lerp(b, Math.min(1, Math.max(0, t)));
 }
 
+const hsl = { h: 0, s: 0, l: 0 };
+
 /** Speed heats the band tint; sanctuary pulls toward the last band color. */
 export function colorForJourney(speed01: number, radius: number): THREE.Color {
   const place = colorForRadius(radius);
   const heat = radius01At(radius);
   return tmp.copy(place).lerp(surge, speed01 * (0.35 + heat * 0.15));
+}
+
+/** Same journey hue, lifted so the craft stays readable on the wash. */
+export function colorForBlob(speed01: number, radius: number): THREE.Color {
+  colorForJourney(speed01, radius);
+  tmp.getHSL(hsl);
+  return tmp.setHSL(
+    hsl.h,
+    Math.min(1, hsl.s * 1.08),
+    Math.min(0.74, Math.max(0.54, hsl.l * 1.18 + 0.1)),
+  );
 }

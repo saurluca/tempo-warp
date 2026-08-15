@@ -4,7 +4,7 @@ import { createDebugOverlay, createTrackChip } from "./debug/overlay";
 import { readFlags } from "./flags";
 import { createPointer } from "./input/pointer";
 import { startLoop } from "./loop";
-import { playerHitsObstacle, playerOverlapsAny, separatePlayer } from "./sim/collide";
+import { playerOverlapsAny, playerSweptObstacle, separatePlayer } from "./sim/collide";
 import { createObstacleField } from "./sim/obstacles";
 import { applyImpact, createPlayer, stepPlayer } from "./sim/player";
 import { currentStrength, densityAt, radius01At, radiusOf, warpAt } from "./sim/world";
@@ -107,6 +107,8 @@ startLoop(
     const halfH = (game.camera.top - game.camera.bottom) * 0.5;
     pointer.syncFromPlayer(player.x, player.z, halfW, halfH);
 
+    const prevX = player.x;
+    const prevZ = player.z;
     stepPlayer(player, dt, pointer.worldX, pointer.worldZ, pointer.boosting, pointer.active);
     // Prefer velocity heading; fall back to aim so spawns load ahead of the camera
     let hx = player.vx;
@@ -124,7 +126,7 @@ startLoop(
       }
     } else if (invuln <= 0 && player.shatterT <= 0) {
       for (const o of field.obstacles) {
-        if (playerHitsObstacle(player, o)) {
+        if (playerSweptObstacle(prevX, prevZ, player.x, player.z, o)) {
           const hx = player.x;
           const hz = player.z;
           applyImpact(player, o.x, o.z);

@@ -1,12 +1,12 @@
 import * as THREE from "three";
 import { tuning } from "../tuning";
-import { colorForJourney } from "./colors";
+import { colorForBlob } from "./colors";
 
 const RING = 72;
 const LAYERS = [
-  { scale: 1, dark: 0.45, light: 0, opacity: 0.72 },
-  { scale: 0.68, dark: 0, light: 0.08, opacity: 0.92 },
-  { scale: 0.36, dark: 0, light: 0.55, opacity: 1 },
+  { scale: 1, dark: 0.72, light: 0, opacity: 0.88 },
+  { scale: 0.72, dark: 0, light: 0.22, opacity: 0.96 },
+  { scale: 0.38, dark: 0, light: 0.68, opacity: 1 },
 ] as const;
 
 export interface PlayerBlob {
@@ -82,6 +82,7 @@ export function createPlayerBlob(scene: THREE.Scene): PlayerBlob {
       opacity: spec.opacity,
       depthTest: false,
       depthWrite: false,
+      fog: false,
       side: THREE.DoubleSide,
     });
     const mesh = new THREE.Mesh(geo, mat);
@@ -102,7 +103,7 @@ export function createPlayerBlob(scene: THREE.Scene): PlayerBlob {
       const visualSpeed = shattered ? 0 : Math.max(speed01, throttle * 0.85);
       wobble += dt * (3.2 + visualSpeed * 4);
 
-      mid.copy(colorForJourney(visualSpeed, radius));
+      mid.copy(colorForBlob(visualSpeed, radius));
       for (const layer of layers) {
         writeComet(layer.positions, layer.spec.scale, visualSpeed, wobble);
         layer.geo.attributes.position!.needsUpdate = true;
