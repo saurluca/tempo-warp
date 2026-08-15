@@ -10,7 +10,13 @@ describe("tracks", () => {
       expect(t.hat.length, id).toBe(t.kick.length);
       expect(t.bass.length, id).toBe(t.kick.length);
       expect(t.lead.length, id).toBe(t.kick.length);
+      expect(t.kit, id).toBeTruthy();
     }
+  });
+
+  it("each track uses a different kit", () => {
+    const kits = TRACK_IDS.map((id) => TRACKS[id].kit);
+    expect(new Set(kits).size).toBe(TRACK_IDS.length);
   });
 
   it("set order walks every track once then wraps", () => {

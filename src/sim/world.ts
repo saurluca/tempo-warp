@@ -12,10 +12,31 @@ export function radius01At(radius: number): number {
   return clamp01(radius / tuning.sanctuaryRadius);
 }
 
-/** 0..1 — peaks on a band edge, dies outside currentWidth. */
+/** Band rims plus repeats past the last edge. */
+export function currentRims(radius: number): number[] {
+  const edges: number[] = [...tuning.bandEdges];
+  const last = edges[edges.length - 1]!;
+  const step = tuning.currentRepeat;
+  if (step > 0) {
+    const extra = Math.max(0, Math.ceil((radius - last) / step) + 1);
+    for (let k = 1; k <= extra; k++) edges.push(last + k * step);
+  }
+  return edges;
+}
+
+/** How many current rims you've passed (climbs forever past the last band). */
+export function currentIndex(radius: number): number {
+  let n = 0;
+  for (const edge of currentRims(radius)) {
+    if (radius >= edge) n += 1;
+  }
+  return n;
+}
+
+/** 0..1 — peaks on a current rim, dies outside currentWidth. */
 export function currentStrength(radius: number): number {
   let best = 0;
-  for (const edge of tuning.bandEdges) {
+  for (const edge of currentRims(radius)) {
     const t = 1 - Math.abs(radius - edge) / tuning.currentWidth;
     if (t > best) best = t;
   }

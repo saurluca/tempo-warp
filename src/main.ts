@@ -7,7 +7,7 @@ import { startLoop } from "./loop";
 import { playerHitsObstacle, playerOverlapsAny, separatePlayer } from "./sim/collide";
 import { createObstacleField } from "./sim/obstacles";
 import { applyImpact, createPlayer, stepPlayer } from "./sim/player";
-import { applyCurrent, bandAt, currentStrength, densityAt, radius01At, radiusOf, warpAt } from "./sim/world";
+import { applyCurrent, currentIndex, currentStrength, densityAt, radius01At, radiusOf, warpAt } from "./sim/world";
 import { tuning } from "./tuning";
 import { clearForRadius, colorForRadius } from "./view/colors";
 import { createBeatWave } from "./view/beatWave";
@@ -63,7 +63,7 @@ let shatterCount = 0;
 let fpsSmooth = 60;
 let invuln = 0;
 let flashT = 0;
-let lastBand = 0;
+let lastCurrent = 0;
 // ponytail: one boolean + button; no settings store
 let bgFollow = false;
 
@@ -156,11 +156,12 @@ startLoop(
     burst.update(dt);
     if (flashT > 0) flashT = Math.max(0, flashT - dt);
     const radius = radiusOf(player.x, player.z);
-    const band = bandAt(radius);
-    if (band > lastBand && player.speed01 >= tuning.currentRideSpeed && player.shatterT <= 0) {
-      console.info("[tempo-warp] spin", audio.spinNext());
+    const rim = currentIndex(radius);
+    if (rim > lastCurrent && player.speed01 >= tuning.currentRideSpeed && player.shatterT <= 0) {
+      const next = audio.spinNext();
+      if (next !== audio.track) console.info("[tempo-warp] spin", next);
     }
-    lastBand = band;
+    lastCurrent = rim;
     audio.setFromPlay(player.speed01, radius01At(radius), player.shatterT > 0, dt);
   },
   (_alpha, dtReal) => {
@@ -204,10 +205,17 @@ startLoop(
     const beatLines =
       beatMode === "rings" ? (hold < 0.4 ? 1 : hold < 0.7 ? 2 : 3) + (current > 0.35 ? 1 : 0) : 0;
     groundWarp.setBeat(audio.kick, audio.snare, audio.hat, beatLines, dtReal);
+    // Mesh always under you (endless); sticky vs world is just UV scroll
+    const worldFixed = !bgFollow;
+    groundWarp.follow(player.x, player.z, worldFixed);
+    game.placeGround(player.x, player.z, worldFixed);
+
+    obstacleViews.sync(field.obstacles);
+    game.followPlayer(player.x, player.z, dtReal);
     const halfW = (game.camera.right - game.camera.left) * 0.5;
     beatWave.update(
-      player.x,
-      player.z,
+      game.camera.position.x,
+      game.camera.position.z,
       halfW,
       audio.kick,
       audio.snare,
@@ -217,13 +225,6 @@ startLoop(
       radius,
       dtReal,
     );
-    // Mesh always under you (endless); sticky vs world is just UV scroll
-    const worldFixed = !bgFollow;
-    groundWarp.follow(player.x, player.z, worldFixed);
-    game.placeGround(player.x, player.z, worldFixed);
-
-    obstacleViews.sync(field.obstacles);
-    game.followPlayer(player.x, player.z, dtReal);
 
     game.renderer.render(game.scene, game.camera);
     debug.update(player, fpsSmooth, {

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   applyCurrent,
   bandAt,
+  currentIndex,
   currentStrength,
   densityAt,
   inwardBandRadius,
@@ -88,6 +89,13 @@ describe("world curves", () => {
     fast.speed01 = 0.8;
     applyCurrent(fast, 1);
     expect(fast.vx).toBeGreaterThan(tuning.maxSpeed * 0.8);
+  });
+
+  it("currents keep appearing past the last band", () => {
+    const last = tuning.bandEdges[tuning.bandEdges.length - 1]!;
+    const next = last + tuning.currentRepeat;
+    expect(currentStrength(next)).toBeCloseTo(1);
+    expect(currentIndex(next)).toBeGreaterThan(currentIndex(last));
   });
 
   it("current leaves homebound traffic alone", () => {

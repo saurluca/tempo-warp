@@ -1,6 +1,6 @@
 import * as Tone from "tone";
 import { tuning } from "../tuning";
-import { nextTrack, TRACKS, type TrackId } from "./tracks";
+import { KITS, nextTrack, TRACKS, type Kit, type LeadKind, type TrackId } from "./tracks";
 
 export interface AudioBus {
   unlocked: boolean;
@@ -44,6 +44,7 @@ export function createAudioBus(initialTrack: TrackId): AudioBus {
   let mixOut = 0;
   /** After a spin, climb stems instead of snapping to musicHold. */
   let catching = false;
+  let onTrack = 0;
 
   const master = new Tone.Gain(0).toDestination();
   const duck = new Tone.Gain(1);
@@ -85,6 +86,9 @@ export function createAudioBus(initialTrack: TrackId): AudioBus {
   const voiceGain = new Tone.Gain(0.0);
   const padGain = new Tone.Gain(0.12);
   const resolveGain = new Tone.Gain(0);
+  const grit = new Tone.Distortion(0.35);
+  grit.wet.value = 0;
+  grit.connect(bassGain);
   bassGain.connect(mixFilter);
   leadGain.connect(mixFilter);
   voiceGain.connect(mixFilter);
@@ -96,11 +100,31 @@ export function createAudioBus(initialTrack: TrackId): AudioBus {
     filter: { Q: 2, type: "lowpass", rolloff: -24 },
     envelope: { attack: 0.01, decay: 0.18, sustain: 0.2, release: 0.12 },
     filterEnvelope: { attack: 0.01, decay: 0.12, sustain: 0.2, release: 0.15, baseFrequency: 80, octaves: 2.2 },
-  }).connect(bassGain);
+  }).connect(grit);
 
   const lead = new Tone.Synth({
     oscillator: { type: "triangle" },
     envelope: { attack: 0.01, decay: 0.12, sustain: 0.15, release: 0.2 },
+  }).connect(leadGain);
+
+  const leadFm = new Tone.FMSynth({
+    harmonicity: 3.2,
+    modulationIndex: 8,
+    oscillator: { type: "sine" },
+    envelope: { attack: 0.008, decay: 0.22, sustain: 0.08, release: 0.18 },
+    modulation: { type: "square" },
+  }).connect(leadGain);
+
+  const leadAm = new Tone.AMSynth({
+    harmonicity: 2.4,
+    oscillator: { type: "sine" },
+    envelope: { attack: 0.02, decay: 0.28, sustain: 0.12, release: 0.3 },
+  }).connect(leadGain);
+
+  const leadPluck = new Tone.PluckSynth({
+    attackNoise: 1,
+    dampening: 3800,
+    resonance: 0.82,
   }).connect(leadGain);
 
   const voice = new Tone.Synth({
@@ -131,6 +155,38 @@ export function createAudioBus(initialTrack: TrackId): AudioBus {
   let kickPulse = 0;
   let snarePulse = 0;
   let hatPulse = 0;
+  let kit: Kit = KITS.neon;
+  let leadKind: LeadKind = "tri";
+
+  const fireLead = (note: string, time: number, vel: number) => {
+    if (leadKind === "fm") leadFm.triggerAttackRelease(note, "16n", time, vel);
+    else if (leadKind === "am") leadAm.triggerAttackRelease(note, "16n", time, vel);
+    else if (leadKind === "pluck") leadPluck.triggerAttackRelease(note, "16n", time, vel);
+    else lead.triggerAttackRelease(note, "16n", time, vel);
+  };
+
+  const applyKit = (id: TrackId) => {
+    kit = KITS[TRACKS[id].kit];
+    leadKind = kit.lead;
+    kick.set({ pitchDecay: kit.kickDecay, octaves: kit.kickOct });
+    snare.set({ noise: { type: kit.snare }, envelope: { decay: kit.snareDecay } });
+    hat.set({
+      envelope: { decay: kit.hatDecay },
+      harmonicity: kit.hatHarm,
+      resonance: kit.hatRes,
+    });
+    bass.oscillator.type = kit.bass;
+    bass.filter.Q.value = kit.bassQ;
+    bass.envelope.decay = kit.bassDecay;
+    bass.filterEnvelope.octaves = kit.bassFiltOct;
+    if (kit.lead === "saw") lead.oscillator.type = "sawtooth";
+    else if (kit.lead === "square") lead.oscillator.type = "square";
+    else lead.oscillator.type = "triangle";
+    lead.envelope.decay = kit.leadDecay;
+    pad.type = kit.pad;
+    voice.oscillator.type = kit.voice;
+    grit.wet.rampTo(kit.grit, 0.25);
+  };
 
   const applyMix = () => {
     if (!unlocked || muted) return;
@@ -174,6 +230,7 @@ export function createAudioBus(initialTrack: TrackId): AudioBus {
       loop = null;
     }
 
+    applyKit(id);
     if (Tone.Transport.state !== "started") {
       Tone.Transport.bpm.value = def.bpm;
     }
@@ -188,7 +245,7 @@ export function createAudioBus(initialTrack: TrackId): AudioBus {
         if (shattered) return;
 
         if (h > 0.12 && def.kick[i]) {
-          kick.triggerAttackRelease("C1", "8n", time, 0.7 + s * 0.3);
+          kick.triggerAttackRelease(kit.kickNote, "8n", time, 0.7 + s * 0.3);
           kickPulse = 1;
         }
         if (h > 0.28 && def.snare[i]) {
@@ -207,7 +264,7 @@ export function createAudioBus(initialTrack: TrackId): AudioBus {
 
         const leadNote = def.lead[i % def.lead.length];
         if (h > 0.62 && leadNote && s > 0.08) {
-          lead.triggerAttackRelease(leadNote, "16n", time, 0.28 + s * 0.5);
+          fireLead(leadNote, time, 0.28 + s * 0.5);
         }
         if (h > 0.78 && leadNote && i % 4 === 0) {
           voice.triggerAttackRelease(leadNote, "8n", time, 0.22 + s * 0.3);
@@ -270,6 +327,7 @@ export function createAudioBus(initialTrack: TrackId): AudioBus {
     setTrack(id: TrackId) {
       if (id === trackId) return;
       trackId = id;
+      onTrack = 0;
       if (unlocked) {
         buildLoop(trackId);
         applyMix();
@@ -281,7 +339,7 @@ export function createAudioBus(initialTrack: TrackId): AudioBus {
       return n;
     },
     spinNext() {
-      if (spin !== "idle") return trackId;
+      if (spin !== "idle" || onTrack < tuning.djMinHold) return trackId;
       pendingTrack = nextTrack(trackId);
       spin = "out";
       return pendingTrack;
@@ -301,6 +359,7 @@ export function createAudioBus(initialTrack: TrackId): AudioBus {
           pendingTrack = null;
           arrange01 = hushBed;
           catching = true;
+          onTrack = 0;
           if (unlocked) buildLoop(trackId);
           spin = "in";
         }
@@ -320,6 +379,7 @@ export function createAudioBus(initialTrack: TrackId): AudioBus {
       }
 
       shattered = isShattered;
+      if (unlocked && spin !== "out") onTrack += dt;
 
       if (!unlocked || muted) return;
 

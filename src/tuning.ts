@@ -108,6 +108,10 @@ export const tuning = {
   djFadeIn: 1.35,
   /** arrange01 rise (1/s) after a spin — hush bed → full mix in ~20s */
   arrangeRise: 0.038,
+  /** Seconds a track must play before a current can spin the next one. */
+  djMinHold: 48,
+  /** Extra current rims past the last band, so the set can keep moving. */
+  currentRepeat: 700,
   /** After a hit, land this far through the previous band (0..1). */
   shatterInwardT: 0.55,
   spawnSpacingMax: 16,

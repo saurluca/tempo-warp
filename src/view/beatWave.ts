@@ -62,7 +62,7 @@ export function createBeatWave(scene: THREE.Scene): BeatWave {
       a2 *= decay;
       a3 *= decay;
 
-      const span = Math.max(24, halfW * 1.05);
+      const span = halfW;
       const amp = 3.4 + speed01 * 2.2;
       const w = beatPhase * Math.PI * 2;
 
