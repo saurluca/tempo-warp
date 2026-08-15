@@ -123,7 +123,8 @@ export function createObstacleField(seed: number): ObstacleField {
     headingX: number,
     headingZ: number,
   ) => {
-    const target = Math.floor(densityAt(speed01));
+    const radius = Math.hypot(px, pz);
+    const target = Math.floor(densityAt(speed01, radius));
     if (obstacles.length >= target) return;
 
     const dist = tuning.spawnRingMin + rand() * (tuning.spawnRingMax - tuning.spawnRingMin);
@@ -131,6 +132,7 @@ export function createObstacleField(seed: number): ObstacleField {
     const x = px + Math.cos(angle) * dist;
     const z = pz + Math.sin(angle) * dist;
 
+    if (Math.hypot(x, z) > tuning.sanctuaryRadius * 0.92) return;
     if (Math.hypot(x - px, z - pz) < tuning.clearBubble) return;
 
     for (const o of obstacles) {
@@ -146,14 +148,15 @@ export function createObstacleField(seed: number): ObstacleField {
     step(dt, time, px, pz, speed01, headingX, headingZ) {
       recycleOrCull(px, pz);
 
-      const spacing = spawnSpacingAt(speed01);
+      const radius = Math.hypot(px, pz);
+      const spacing = spawnSpacingAt(speed01, radius);
       spawnAcc += Math.max(speed01, 0.08) * tuning.maxSpeed * dt;
       while (spawnAcc >= spacing) {
         spawnAcc -= spacing;
         trySpawn(px, pz, speed01, headingX, headingZ);
       }
 
-      if (speed01 > 0.35 && obstacles.length < densityAt(speed01) * 0.7) {
+      if (obstacles.length < densityAt(speed01, radius) * 0.7) {
         trySpawn(px, pz, speed01, headingX, headingZ);
       }
 

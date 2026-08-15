@@ -11,7 +11,7 @@ export const tuning = {
   throttleRise: 2.1,
   throttleFall: 2.8,
   /** Engine push while throttling (world units / s² at full throttle) */
-  engineAccel: 22,
+  engineAccel: 16,
   /** Lateral / aim assist push (keeps turns lively without hard accel) */
   steerAccel: 16,
   /**
@@ -44,13 +44,18 @@ export const tuning = {
   clearColor: 0x0a0e14,
   playerEmissiveHush: 0x1a3a55,
   playerEmissiveSurge: 0xff6a1a,
-  stretchMax: 1.85,
+  stretchMax: 2.15,
   warpMax: 1,
+  /** Visual blob (hitbox stays playerRadius) */
+  blobRadius: 1.15,
+  /** Flat 2D glyphs */
+  hazardFillOpacity: 0.55,
+  hazardRimOpacity: 0.95,
   /** Lower = see farther; keep hazards readable before they reach you */
-  fogDensity: 0.008,
+  fogDensity: 0.005,
 
   /** Camera — larger viewSize = wider overview (everything reads smaller) */
-  cameraHeight: 52,
+  cameraHeight: 64,
   cameraLookOffset: 0,
   cameraFollow: 6,
 
@@ -72,20 +77,38 @@ export const tuning = {
    * scroll into view with reaction time (not pop onto the player).
    * With cameraHeight ~52, half-view ≈ 26; keep spawnRingMin above that.
    */
-  densityMin: 2,
-  densityMax: 6,
-  spawnSpacingMax: 22,
-  spawnSpacingMin: 10,
-  spawnRingMin: 44,
-  spawnRingMax: 72,
-  clearBubble: 14,
-  cullRadius: 90,
-  safeRingCount: 3,
-  safeRingRadius: 48,
+  densityMin: 4,
+  densityMax: 14,
+  /** Extra bodies as you leave the origin (center stays open) */
+  densityRadialReach: 2000,
+  densityRadialExtra: 32,
+
+  /**
+   * Journey bands from origin. Edges = hush|drift|surge|veil then sanctuary.
+   * ~50s full-send to the rim at maxSpeed 48.
+   */
+  bandEdges: [400, 900, 1600, 2400],
+  sanctuaryRadius: 2400,
+  /** Band tints: hush, drift, surge, veil, sanctuary */
+  bandColors: [0x3a6b8c, 0x3dffc8, 0xff6a3a, 0x7b5cff, 0xf2e6c8],
+  bandClears: [0x0a0e14, 0x08141a, 0x140c0a, 0x0c0a16, 0x12141a],
+  /** Music peak-hold decay (1/s). Shatter dumps faster. */
+  musicHoldDecay: 0.11,
+  musicHoldDecayShatter: 0.55,
+  /** After a hit, land this far through the previous band (0..1). */
+  shatterInwardT: 0.55,
+  spawnSpacingMax: 16,
+  spawnSpacingMin: 5,
+  spawnRingMin: 52,
+  spawnRingMax: 88,
+  clearBubble: 12,
+  cullRadius: 110,
+  safeRingCount: 4,
+  safeRingRadius: 90,
   /** Bias spawns into the travel/aim cone (0 = full ring, 1 = only ahead) */
-  spawnForwardBias: 0.72,
-  moverChanceMin: 0.08,
-  moverChanceMax: 0.35,
-  obstacleHalfMin: 0.85,
-  obstacleHalfMax: 1.9,
+  spawnForwardBias: 0.78,
+  moverChanceMin: 0.14,
+  moverChanceMax: 0.52,
+  obstacleHalfMin: 1.05,
+  obstacleHalfMax: 2.5,
 } as const;

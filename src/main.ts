@@ -7,12 +7,13 @@ import { startLoop } from "./loop";
 import { playerHitsObstacle, playerOverlapsAny, separatePlayer } from "./sim/collide";
 import { createObstacleField } from "./sim/obstacles";
 import { applyImpact, createPlayer, stepPlayer } from "./sim/player";
-import { densityAt, warpAt } from "./sim/world";
+import { densityAt, radius01At, radiusOf, warpAt } from "./sim/world";
 import { tuning } from "./tuning";
-import { colorForSpeed, emissiveForSpeed } from "./view/colors";
+import { clearForRadius, colorForRadius } from "./view/colors";
 import { createGroundWarp } from "./view/groundWarp";
+import { createLandmarks } from "./view/landmarks";
 import { createObstacleViews } from "./view/obstaclesView";
-import { createPlayerTail } from "./view/playerTail";
+import { createPlayerBlob } from "./view/playerBlob";
 import { createGameScene } from "./view/scene";
 import { createShatterBurst } from "./view/shatterBurst";
 
@@ -27,18 +28,28 @@ if (!host) {
 const game = createGameScene(host);
 const groundWarp = createGroundWarp(game.scene);
 const burst = createShatterBurst(game.scene);
-const tail = createPlayerTail(game.scene);
+const craft = createPlayerBlob(game.scene);
+createLandmarks(game.scene);
 const pointer = createPointer(game.renderer.domElement, game.camera);
 const player = createPlayer();
 const field = createObstacleField(flags.seed);
 const obstacleViews = createObstacleViews(game.scene);
 const audio = createAudioBus(flags.track);
-const debug = createDebugOverlay(flags.debug, () => {
-  const id = audio.cycleTrack();
-  console.info("[tempo-warp] track", id);
-});
+let gridOn = false;
+const debug = createDebugOverlay(
+  flags.debug,
+  () => {
+    const id = audio.cycleTrack();
+    console.info("[tempo-warp] track", id);
+  },
+  () => {
+    gridOn = !gridOn;
+    game.setGrid(gridOn);
+    groundWarp.setGrid(gridOn);
+    return gridOn;
+  },
+);
 console.info("[tempo-warp] music", flags.track);
-const baseClear = new THREE.Color(tuning.clearColor);
 const flashClear = new THREE.Color(0x1a3048);
 const clearMix = new THREE.Color();
 
@@ -48,11 +59,11 @@ let fpsSmooth = 60;
 let invuln = 0;
 let flashT = 0;
 // ponytail: one boolean + button; no settings store
-let bgFollow = true;
+let bgFollow = false;
 
 const bgBtn = document.createElement("button");
 bgBtn.type = "button";
-bgBtn.textContent = "BG: sticky";
+bgBtn.textContent = "BG: world";
 bgBtn.title = "Sticky = grid rides with you · World = endless fixed grid";
 bgBtn.style.cssText = [
   "position:fixed",
@@ -137,59 +148,49 @@ startLoop(
 
     burst.update(dt);
     if (flashT > 0) flashT = Math.max(0, flashT - dt);
-    audio.setFromSpeed(player.speed01, player.shatterT > 0);
+    const radius = radiusOf(player.x, player.z);
+    audio.setFromPlay(player.speed01, radius01At(radius), player.shatterT > 0, dt);
   },
   (_alpha, dtReal) => {
     fpsSmooth = fpsSmooth * 0.9 + (1 / Math.max(dtReal, 1 / 240)) * 0.1;
 
-    game.player.position.x = player.x;
-    game.player.position.z = player.z;
-    game.player.position.y = tuning.playerRadius;
-
     const speed = player.speed01;
     const shattered = player.shatterT > 0;
-    const stretch = shattered
-      ? 0.75 + Math.sin(simTime * 40) * 0.08
-      : 1 + (tuning.stretchMax - 1) * Math.max(speed, player.throttle * 0.85);
-    const yaw = Math.atan2(player.vx, player.vz || 0.0001);
-    game.player.rotation.set(0, yaw, 0);
-    game.player.scale.set(
-      shattered ? 1.15 : 1 / Math.sqrt(stretch),
-      shattered ? 0.55 : 1,
-      shattered ? 1.15 : stretch,
+    const radius = radiusOf(player.x, player.z);
+
+    craft.update(
+      player.x,
+      player.z,
+      player.vx,
+      player.vz,
+      speed,
+      player.throttle,
+      player.shatterT,
+      radius,
+      dtReal,
     );
 
-    const c = colorForSpeed(shattered ? 0 : speed);
-    const e = emissiveForSpeed(shattered ? 0 : speed);
-    game.playerMat.color.copy(c);
-    game.playerMat.emissive.copy(e);
-    game.playerMat.emissiveIntensity = shattered ? 0.25 : 1.2 + speed * 1.1;
-    game.playerMat.opacity = shattered ? 0.4 : 1;
-    game.playerMat.transparent = shattered;
-    game.playerMat.roughness = shattered ? 0.9 : 0.25;
-    game.ringMat.color.copy(c);
-    game.ringMat.opacity = shattered ? 0.12 : 0.4 + speed * 0.4;
-
     const flash = flashT / 0.22;
+    const placeClear = clearForRadius(radius);
     if (flash > 0) {
-      clearMix.copy(baseClear).lerp(flashClear, flash);
+      clearMix.copy(placeClear).lerp(flashClear, flash);
       game.renderer.setClearColor(clearMix);
     } else {
-      game.renderer.setClearColor(baseClear);
+      game.renderer.setClearColor(placeClear);
     }
     if (game.scene.fog instanceof THREE.FogExp2) {
+      game.scene.fog.color.copy(placeClear);
       game.scene.fog.density =
         tuning.fogDensity + (shattered ? 0.01 : 0) + speed * 0.002;
     }
 
-    const warp = shattered ? 0 : warpAt(speed);
+    const warp = shattered ? 0 : warpAt(speed, radius);
+    groundWarp.setBand(colorForRadius(radius));
     groundWarp.setWarp(warp, simTime);
     // Mesh always under you (endless); sticky vs world is just UV scroll
     const worldFixed = !bgFollow;
     groundWarp.follow(player.x, player.z, worldFixed);
     game.placeGround(player.x, player.z, worldFixed);
-
-    tail.update(player.x, player.z, player.vx, player.vz, shattered ? 0 : speed);
 
     obstacleViews.sync(field.obstacles);
     game.followPlayer(player.x, player.z, dtReal);
@@ -197,9 +198,11 @@ startLoop(
     game.renderer.render(game.scene, game.camera);
     debug.update(player, fpsSmooth, {
       obstacleCount: field.obstacles.length,
-      densityTarget: densityAt(player.speed01),
+      densityTarget: densityAt(player.speed01, radius),
       warp,
       track: audio.track,
+      radius01: radius01At(radius),
+      musicHold: audio.musicHold,
     });
 
     (window as unknown as { __tempo: unknown }).__tempo = {
@@ -212,9 +215,11 @@ startLoop(
       shatterT: player.shatterT,
       audioUnlocked: audio.unlocked,
       obstacleCount: field.obstacles.length,
-      densityTarget: densityAt(player.speed01),
+      densityTarget: densityAt(player.speed01, radius),
       warp,
       track: audio.track,
+      radius01: radius01At(radius),
+      musicHold: audio.musicHold,
     };
   },
 );

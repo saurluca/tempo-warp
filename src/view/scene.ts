@@ -1,21 +1,20 @@
 import * as THREE from "three";
 import { tuning } from "../tuning";
 
-const GROUND_PLANE = 120;
-const GROUND_REPEAT = 24;
+const GROUND_PLANE = 400;
+/** Higher repeat = smaller world-space grid cells */
+const GROUND_REPEAT = 48;
 const GROUND_TILE = GROUND_PLANE / GROUND_REPEAT;
 
 export interface GameScene {
   renderer: THREE.WebGLRenderer;
   scene: THREE.Scene;
   camera: THREE.OrthographicCamera;
-  player: THREE.Mesh;
-  playerMat: THREE.MeshStandardMaterial;
-  ringMat: THREE.MeshBasicMaterial;
   ground: THREE.Mesh;
   parallax: THREE.Mesh;
   /** Mesh always under player; worldFixed scrolls the grid so it looks world-locked. */
   placeGround: (x: number, z: number, worldFixed: boolean) => void;
+  setGrid: (on: boolean) => void;
   resize: () => void;
   followPlayer: (x: number, z: number, dt: number) => void;
   dispose: () => void;
@@ -33,8 +32,8 @@ function makeGridTexture(): THREE.CanvasTexture {
   ctx.fillStyle = "#0c121c";
   ctx.fillRect(0, 0, size, size);
   ctx.strokeStyle = "#1a3048";
-  ctx.lineWidth = 2;
-  const step = 32;
+  ctx.lineWidth = 1.5;
+  const step = 16;
   for (let i = 0; i <= size; i += step) {
     ctx.beginPath();
     ctx.moveTo(i, 0);
@@ -70,11 +69,11 @@ export function createGameScene(host: HTMLElement): GameScene {
     viewSize / 2,
     -viewSize / 2,
     0.1,
-    200,
+    4000,
   );
-  camera.position.set(0, tuning.cameraHeight, 0.01);
+  camera.position.set(0, tuning.cameraHeight, 0);
   camera.up.set(0, 0, -1);
-  camera.lookAt(0, 0, tuning.cameraLookOffset);
+  camera.lookAt(0, 0, 0);
 
   const ambient = new THREE.AmbientLight(0x6a8aaa, 0.55);
   const key = new THREE.DirectionalLight(0xb0d4ff, 1.1);
@@ -93,18 +92,22 @@ export function createGameScene(host: HTMLElement): GameScene {
       color: 0x445566,
       transparent: true,
       opacity: 0.35,
+      depthTest: false,
+      depthWrite: false,
     }),
   );
   ground.rotation.x = -Math.PI / 2;
   ground.position.y = -0.02;
+  ground.visible = false;
   scene.add(ground);
 
   const parallax = new THREE.Mesh(
-    new THREE.PlaneGeometry(160, 160),
+    new THREE.PlaneGeometry(400, 400),
     new THREE.MeshBasicMaterial({
       color: 0x122033,
       transparent: true,
       opacity: 0.55,
+      depthTest: false,
       depthWrite: false,
     }),
   );
@@ -123,32 +126,6 @@ export function createGameScene(host: HTMLElement): GameScene {
       groundMap.offset.set(0, 0);
     }
   };
-
-  const playerMat = new THREE.MeshStandardMaterial({
-    color: tuning.hushColor,
-    emissive: tuning.playerEmissiveHush,
-    emissiveIntensity: 1.4,
-    roughness: 0.25,
-    metalness: 0.35,
-  });
-  const player = new THREE.Mesh(new THREE.IcosahedronGeometry(tuning.playerRadius, 1), playerMat);
-  player.position.set(0, tuning.playerRadius, 0);
-  scene.add(player);
-
-  const ringMat = new THREE.MeshBasicMaterial({
-    color: tuning.hushColor,
-    transparent: true,
-    opacity: 0.55,
-    side: THREE.DoubleSide,
-    depthWrite: false,
-  });
-  const ring = new THREE.Mesh(
-    new THREE.RingGeometry(tuning.playerRadius * 1.15, tuning.playerRadius * 1.55, 32),
-    ringMat,
-  );
-  ring.rotation.x = -Math.PI / 2;
-  ring.position.y = 0.02;
-  player.add(ring);
 
   let camX = 0;
   let camZ = 0;
@@ -170,8 +147,8 @@ export function createGameScene(host: HTMLElement): GameScene {
     camX += (x - camX) * k;
     camZ += (z - camZ) * k;
     camera.position.x = camX;
-    camera.position.z = camZ + 0.01;
-    camera.lookAt(camX, 0, camZ + tuning.cameraLookOffset);
+    camera.position.z = camZ;
+    camera.lookAt(camX, 0, camZ);
   };
 
   resize();
@@ -181,12 +158,12 @@ export function createGameScene(host: HTMLElement): GameScene {
     renderer,
     scene,
     camera,
-    player,
-    playerMat,
-    ringMat,
     ground,
     parallax,
     placeGround,
+    setGrid: (on) => {
+      ground.visible = on;
+    },
     resize,
     followPlayer,
     dispose: () => {

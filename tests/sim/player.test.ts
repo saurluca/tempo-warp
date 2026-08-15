@@ -84,4 +84,15 @@ describe("car-like throttle", () => {
     expect(Math.hypot(p.vx, p.vz)).toBeGreaterThanOrEqual(tuning.impactMinSpeed - 0.01);
     expect(p.vx).toBeGreaterThan(0); // pushed away from obstacle on the left
   });
+
+  it("impact far from origin knocks one band inward", () => {
+    const p = createPlayer();
+    const midSurge = (tuning.bandEdges[1]! + tuning.bandEdges[2]!) * 0.5;
+    p.x = midSurge;
+    p.z = 0;
+    p.vx = 20;
+    applyImpact(p, midSurge + 1, 0);
+    expect(Math.hypot(p.x, p.z)).toBeLessThan(tuning.bandEdges[1]!);
+    expect(Math.hypot(p.x, p.z)).toBeGreaterThan(tuning.bandEdges[0]!);
+  });
 });

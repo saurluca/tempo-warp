@@ -23,6 +23,7 @@ export function createShatterBurst(scene: THREE.Scene): ShatterBurst {
     size: 0.35,
     transparent: true,
     opacity: 0,
+    depthTest: false,
     depthWrite: false,
     sizeAttenuation: true,
   });

@@ -6,6 +6,8 @@ export interface DebugExtras {
   densityTarget?: number;
   warp?: number;
   track?: TrackId;
+  radius01?: number;
+  musicHold?: number;
 }
 
 export interface DebugOverlay {
@@ -15,6 +17,7 @@ export interface DebugOverlay {
 export function createDebugOverlay(
   enabled: boolean,
   onCycleTrack?: () => void,
+  onToggleGrid?: () => boolean,
 ): DebugOverlay {
   if (!enabled) {
     return {
@@ -54,7 +57,27 @@ export function createDebugOverlay(
     e.stopPropagation();
   });
 
-  root.append(stats, trackBtn);
+  const gridBtn = document.createElement("button");
+  gridBtn.type = "button";
+  gridBtn.textContent = "GRID: off";
+  gridBtn.title = "Hide / show the ground grid";
+  gridBtn.style.cssText = trackBtn.style.cssText;
+  gridBtn.style.marginLeft = "6px";
+  gridBtn.style.background = "#1a3048";
+  gridBtn.style.color = "#9ec9ff";
+  gridBtn.addEventListener("click", (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const on = onToggleGrid?.() ?? true;
+    gridBtn.textContent = on ? "GRID: on" : "GRID: off";
+  });
+  gridBtn.addEventListener("pointerdown", (e) => {
+    e.stopPropagation();
+  });
+
+  const row = document.createElement("div");
+  row.append(trackBtn, gridBtn);
+  root.append(stats, row);
   document.body.appendChild(root);
 
   let lastTrack: TrackId | undefined;
@@ -67,6 +90,8 @@ export function createDebugOverlay(
         `throttle ${p.throttle.toFixed(2)}`,
         `hold ${p.boosting ? "ON" : "off"}`,
         `pos ${p.x.toFixed(1)}, ${p.z.toFixed(1)}`,
+        `radius01 ${(extra.radius01 ?? 0).toFixed(2)}`,
+        `musicHold ${(extra.musicHold ?? 0).toFixed(2)}`,
         `shatterT ${p.shatterT.toFixed(2)}`,
         `obs ${extra.obstacleCount ?? "?"} / ${extra.densityTarget?.toFixed(0) ?? "?"}`,
         `warp ${(extra.warp ?? 0).toFixed(2)}`,

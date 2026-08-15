@@ -8,5 +8,8 @@ Tracks (random on load, or ?track=):
   neon   — four-on-the-floor drive (~128 BPM)
   drift  — half-time glide (~92 BPM)
   surge  — fast break energy (~142 BPM)
+  pulse  — mid-tempo hypnotic techno (~110 BPM)
+  veil   — soft float, sparse air (~78 BPM)
+  razor  — sharp industrial syncopation (~155 BPM)
 
 Debug (?debug=1): click the track button to cycle.
