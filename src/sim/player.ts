@@ -1,6 +1,5 @@
 import { tuning } from "../tuning";
 import type { PlayerState } from "./types";
-import { inwardBandRadius } from "./world";
 
 export function createPlayer(): PlayerState {
   return {
@@ -178,12 +177,4 @@ export function applyImpact(p: PlayerState, fromX: number, fromZ: number): void 
   p.boosting = false;
   p.shatterT = tuning.shatterRecover;
   p.clearOfHazards = false;
-
-  const r = Math.hypot(p.x, p.z);
-  const dest = inwardBandRadius(r);
-  if (dest < r && r > 1e-3) {
-    const s = dest / r;
-    p.x *= s;
-    p.z *= s;
-  }
 }

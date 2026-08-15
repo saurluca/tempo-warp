@@ -35,11 +35,13 @@ console.info("[tempo-warp] beat", beatMode);
 const burst = createShatterBurst(game.scene);
 const craft = createPlayerBlob(game.scene);
 createLandmarks(game.scene);
-const pointer = createPointer(game.renderer.domElement, game.camera);
+const audio = createAudioBus(flags.track);
+const pointer = createPointer(game.renderer.domElement, game.camera, () => {
+  void audio.unlock();
+});
 const player = createPlayer();
 const field = createObstacleField(flags.seed);
 const obstacleViews = createObstacleViews(game.scene);
-const audio = createAudioBus(flags.track);
 const debug = createDebugOverlay(flags.debug, () => {
   const id = audio.cycleTrack();
   console.info("[tempo-warp] track", id);
@@ -55,11 +57,19 @@ let invuln = 0;
 let flashT = 0;
 let lastCurrent = 0;
 
-const unlockOnce = () => {
+const canvas = game.renderer.domElement;
+const tryUnlock = () => {
+  if (audio.unlocked) return;
   void audio.unlock();
-  game.renderer.domElement.removeEventListener("pointerdown", unlockOnce);
 };
-game.renderer.domElement.addEventListener("pointerdown", unlockOnce);
+canvas.addEventListener("pointerdown", tryUnlock);
+canvas.addEventListener("pointerup", tryUnlock);
+canvas.addEventListener("touchstart", tryUnlock, { passive: true });
+canvas.addEventListener("touchend", tryUnlock, { passive: true });
+canvas.addEventListener("click", tryUnlock);
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible") tryUnlock();
+});
 
 obstacleViews.sync(field.obstacles);
 
@@ -108,6 +118,8 @@ startLoop(
           separatePlayer(player, field.obstacles);
           burst.trigger(hx, hz);
           obstacleViews.pulse(hx, hz);
+          const back = audio.spinPrev();
+          if (back !== audio.track) console.info("[tempo-warp] drop", back);
           flashT = 0.22;
           shatterCount += 1;
           invuln = tuning.shatterInvuln;

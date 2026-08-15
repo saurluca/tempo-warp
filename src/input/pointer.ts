@@ -88,7 +88,11 @@ function makeStickHud(): {
   };
 }
 
-export function createPointer(canvas: HTMLElement, camera: THREE.Camera): PointerState {
+export function createPointer(
+  canvas: HTMLElement,
+  camera: THREE.Camera,
+  onGesture?: () => void,
+): PointerState {
   const ndc = new THREE.Vector2(0, 0);
   let haveNdc = false;
   /** When true, syncFromPlayer won't overwrite (debug __tempoAim). */
@@ -200,6 +204,7 @@ export function createPointer(canvas: HTMLElement, camera: THREE.Camera): Pointe
 
   const onDown = (e: PointerEvent) => {
     if (e.button !== 0) return;
+    onGesture?.();
     try {
       canvas.setPointerCapture(e.pointerId);
     } catch {
@@ -223,6 +228,7 @@ export function createPointer(canvas: HTMLElement, camera: THREE.Camera): Pointe
 
   const onUp = (e: PointerEvent) => {
     if (e.button !== 0) return;
+    onGesture?.();
     state.boosting = false;
     if (stickOn && e.pointerId === stickId) {
       endStick();

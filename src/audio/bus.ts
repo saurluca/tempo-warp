@@ -1,6 +1,6 @@
 import * as Tone from "tone";
 import { tuning } from "../tuning";
-import { KITS, nextTrack, TRACKS, type Kit, type LeadKind, type TrackId } from "./tracks";
+import { KITS, nextTrack, prevTrack, TRACKS, type Kit, type LeadKind, type TrackId } from "./tracks";
 
 export interface AudioBus {
   unlocked: boolean;
@@ -24,6 +24,8 @@ export interface AudioBus {
   cycleTrack: () => TrackId;
   /** Crossfade into the next track; incoming starts at the hush bed. */
   spinNext: () => TrackId;
+  /** Hit: one track back (or stay on the first). */
+  spinPrev: () => TrackId;
 }
 
 /**
@@ -198,9 +200,10 @@ export function createAudioBus(initialTrack: TrackId): AudioBus {
     if (!unlocked || muted) return;
     const s = shattered ? 0 : speed01;
     const h = shattered ? arrange01 * 0.35 : arrange01;
-    const duckAmt = (shattered ? 0.12 : 1) * (1 - mixOut * 0.72);
+    const fade = mixOut * mixOut * (3 - 2 * mixOut);
+    const duckAmt = (shattered ? 0.12 : 1) * (1 - fade * 0.94);
 
-    duck.gain.rampTo(duckAmt, 0.1);
+    duck.gain.rampTo(duckAmt, 0.35);
 
     const kickOn = h > 0.12;
     const snareOn = h > 0.28;
@@ -219,11 +222,11 @@ export function createAudioBus(initialTrack: TrackId): AudioBus {
     resolveGain.gain.rampTo(0, 0.2);
 
     const open = shattered ? 280 : 1100 + s * 4400 + h * 400;
-    mixFilter.frequency.rampTo(open * (1 - mixOut * 0.55), 0.18);
+    mixFilter.frequency.rampTo(open * (1 - fade * 0.78), 0.45);
     padFilter.frequency.rampTo(320 + s * 900 + h * 200, 0.25);
 
     const def = TRACKS[trackId];
-    Tone.Transport.bpm.rampTo(def.bpm * (1 + s * 0.05), 0.8);
+    Tone.Transport.bpm.rampTo(def.bpm * (1 + s * 0.05), 1.8);
     const padHz = Tone.Frequency(def.pad).toFrequency();
     pad.frequency.rampTo(padHz * (1 + h * 0.28), 0.7);
     resolve.frequency.rampTo(padHz * 1.5, 0.8);
@@ -325,7 +328,14 @@ export function createAudioBus(initialTrack: TrackId): AudioBus {
     },
     async unlock() {
       if (unlocked) return;
-      await Tone.start();
+      try {
+        await Tone.start();
+        const ctx = Tone.getContext();
+        if (ctx.state !== "running") await ctx.resume();
+        if (ctx.state !== "running") return;
+      } catch {
+        return;
+      }
       buildLoop(trackId);
       if (Tone.Transport.state !== "started") {
         Tone.Transport.start();
@@ -357,6 +367,15 @@ export function createAudioBus(initialTrack: TrackId): AudioBus {
     spinNext() {
       if (spin !== "idle" || onTrack < tuning.djMinHold) return trackId;
       pendingTrack = nextTrack(trackId);
+      spin = "out";
+      return pendingTrack;
+    },
+    spinPrev() {
+      onTrack = 0;
+      if (spin !== "idle") return trackId;
+      const prev = prevTrack(trackId);
+      if (prev === trackId) return trackId;
+      pendingTrack = prev;
       spin = "out";
       return pendingTrack;
     },

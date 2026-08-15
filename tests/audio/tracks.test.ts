@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { nextTrack, TRACK_IDS, TRACKS } from "../../src/audio/tracks";
+import { nextTrack, prevTrack, TRACK_IDS, TRACKS } from "../../src/audio/tracks";
 
 describe("tracks", () => {
   it("every track is on a 16th grid and stems share a loop length", () => {
@@ -29,6 +29,12 @@ describe("tracks", () => {
     }
     expect(id).toBe(TRACK_IDS[0]);
     expect(seen.size).toBe(TRACK_IDS.length);
+  });
+
+  it("prev track steps back and stays on the first", () => {
+    expect(prevTrack("veil")).toBe("veil");
+    expect(prevTrack("ember")).toBe("veil");
+    expect(prevTrack("razor")).toBe("surge");
   });
 
   it("adjacent BPMs stay close enough to DJ", () => {

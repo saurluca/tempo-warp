@@ -761,3 +761,9 @@ export function nextTrack(current: TrackId): TrackId {
   const i = TRACK_IDS.indexOf(current);
   return TRACK_IDS[(i + 1) % TRACK_IDS.length]!;
 }
+
+/** One step back. First track stays put (no wrap). */
+export function prevTrack(current: TrackId): TrackId {
+  const i = TRACK_IDS.indexOf(current);
+  return TRACK_IDS[Math.max(0, i - 1)]!;
+}

@@ -8,10 +8,10 @@ export const tuning = {
    * Car-like throttle: hold click to spool up, release to coast.
    * throttleRise ~ seconds toward full; throttleFall ~ seconds back to idle.
    */
-  throttleRise: 2.1,
+  throttleRise: 1.7,
   throttleFall: 2.8,
   /** Engine push while throttling (world units / s² at full throttle) */
-  engineAccel: 16,
+  engineAccel: 20,
   /** Lateral / aim assist push (keeps turns lively without hard accel) */
   steerAccel: 16,
   /**
@@ -68,9 +68,9 @@ export const tuning = {
   shatterRecover: 0.45,
   shatterInvuln: 0.55,
   /** Keep this fraction of incoming speed as outward knockback */
-  impactSpeedKeep: 0.42,
+  impactSpeedKeep: 0.58,
   /** Floor knockback so you never hard-stop to zero */
-  impactMinSpeed: 6,
+  impactMinSpeed: 8,
   /** Throttle left after a hit (spool not fully wiped) */
   impactThrottleKeep: 0.2,
   /** Shatter shockwave — recolors glyphs the front crosses */
@@ -112,8 +112,8 @@ export const tuning = {
   currentCarry: 20,
   currentSlip: 16,
   /** DJ handoff: duck out, swap pattern, then stems climb like a new run. */
-  djFadeOut: 0.85,
-  djFadeIn: 1.35,
+  djFadeOut: 2.4,
+  djFadeIn: 3.2,
   /** arrange01 rise (1/s) after a spin — hush bed → full mix in ~14s */
   arrangeRise: 0.055,
   /** Seconds a track must play before a current can spin the next one. */
