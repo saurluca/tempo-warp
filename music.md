@@ -2,31 +2,32 @@
 
 Procedural Tone.js. No audio files. One sequencer, one synth rack; each track swaps a **kit** (instruments / timbre) on the DJ handoff.
 
-Code: `src/audio/tracks.ts` (patterns + kits), `src/audio/bus.ts` (mix, stems, spin). Feel knobs: `tuning.ts` (`djHoldBase` / `djHoldPerPart`, `djFadeOut` / `djFadeIn`, `arrangeRise`).
+Code: `src/audio/tracks.ts` (patterns + kits), `src/audio/bus.ts` (mix, stems, spin). Feel knobs: `tuning.ts` (`djHoldBase` / `djHoldPerPart`, `djFadeOut` / `djFadeIn`).
 
 ## How it plays
 
 - First click unlocks audio (`Tone.start()`).
 - A 16th-note loop fires kick / snare / hats / bass / lead / voice. The pad drones the track’s root.
-- **Distance** (`musicHold`, peak-held `radius01`) opens the arrangement. Floor is a hush bed (pad + kick + a bit of bass) — never silence.
+- **Time on the track** opens the arrangement (same clock every song). Floor is a hush bed (kick + bass) — never silence.
 - **Speed** opens the filter, pushes gains, and nudges BPM a few percent. It does not pick the notes.
 - Shatter ducks the mix and plays a heartbeat. Track does not change; the survive clock resets.
 - Survive without a hit to **spin** the next track. Hold grows with open stems (~16s hush → ~51s full mix): duck + filter close → swap pattern + kit → fade in from the hush bed → stems rebuild over ~20s.
 
 `?track=ember` forces a start. `?debug=1` + ♪ cycles with a hard cut (no DJ fade).
 
-### Stem gates (`arrange01`)
+### Stem clock (same on every track)
 
-| Stem | Opens at |
-|---|---|
-| Kick | 0.12 |
-| Bass | 0.22 |
-| Snare | 0.28 |
-| Hats | 0.45 |
-| Lead | 0.62 |
-| Voice | 0.78 |
+Gaps grow each time. Bodies show ~2.5s before you hear that stem.
 
-First song follows `musicHold`. After a spin, `arrange01` resets to 0.24 and climbs (`arrangeRise`).
+| Stem | Seconds | Shape |
+|---|---|---|
+| Kick + bass | 0 | spire |
+| Snare | 5 | ring |
+| Hats | 12 | ring |
+| Lead | 22 | shard |
+| Voice | 36 | monolith |
+
+Clock is time on the track, not distance. A DJ spin resets it.
 
 ## DJ set (spin order)
 

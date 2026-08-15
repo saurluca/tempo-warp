@@ -1,3 +1,4 @@
+import { dueKindsAt } from "../audio/tracks";
 import { mulberry32 } from "../rng";
 import { tuning } from "../tuning";
 import type { Obstacle, ObstacleKind } from "./types";
@@ -15,43 +16,19 @@ export interface ObstacleField {
     speed01: number,
     headingX: number,
     headingZ: number,
-    arrange01?: number,
+    arrangeT?: number,
   ) => void;
 }
 
-/** Same stem-open gates as audio/bus applyMix. Visible a bit before you hear them. */
-const KIND_LEAD = 0.12;
-const KIND_GATE: { kind: ObstacleKind; gate: number }[] = [
-  { kind: "spire", gate: 0.22 },
-  { kind: "ring", gate: 0.45 },
-  { kind: "shard", gate: 0.62 },
-  { kind: "monolith", gate: 0.78 },
-];
-
-function kindWeight(arrange01: number, gate: number): number {
-  if (arrange01 >= gate - KIND_LEAD) return 1;
-  const t = Math.max(0, (arrange01 - (gate - KIND_LEAD - 0.06)) / 0.06);
-  return t * t * 0.1;
-}
-
-export function dueKinds(arrange01: number): ObstacleKind[] {
-  return KIND_GATE.filter((k) => arrange01 >= k.gate - KIND_LEAD).map((k) => k.kind);
+export function dueKinds(arrangeT: number): ObstacleKind[] {
+  return dueKindsAt(arrangeT);
 }
 
 /** Live stems (and ones about to open) dominate. */
-export function pickKind(rand: () => number, arrange01 = 1): ObstacleKind {
-  let total = 0;
-  const weights = KIND_GATE.map((k) => {
-    const w = kindWeight(arrange01, k.gate);
-    total += w;
-    return w;
-  });
-  let r = rand() * Math.max(total, 1e-6);
-  for (let i = 0; i < KIND_GATE.length; i++) {
-    r -= weights[i]!;
-    if (r <= 0) return KIND_GATE[i]!.kind;
-  }
-  return "spire";
+export function pickKind(rand: () => number, arrangeT = 99): ObstacleKind {
+  const due = dueKinds(arrangeT);
+  if (due.length === 0) return "spire";
+  return due[Math.floor(rand() * due.length)]!;
 }
 
 function countKind(list: Obstacle[], kind: ObstacleKind): number {
@@ -61,9 +38,9 @@ function countKind(list: Obstacle[], kind: ObstacleKind): number {
 }
 
 /** Prefer a live kind the field is short on, so the beat has bodies in view. */
-export function pickNeededKind(rand: () => number, arrange01: number, list: Obstacle[]): ObstacleKind {
-  const due = dueKinds(arrange01);
-  if (due.length === 0) return pickKind(rand, arrange01);
+export function pickNeededKind(rand: () => number, arrangeT: number, list: Obstacle[]): ObstacleKind {
+  const due = dueKinds(arrangeT);
+  if (due.length === 0) return pickKind(rand, arrangeT);
   let need: ObstacleKind = due[0]!;
   let needN = Infinity;
   for (const k of due) {
@@ -76,7 +53,7 @@ export function pickNeededKind(rand: () => number, arrange01: number, list: Obst
   if (needN === 0) return need;
   const fair = list.length / due.length;
   if (needN < fair * 0.45 && rand() < 0.8) return need;
-  return pickKind(rand, arrange01);
+  return pickKind(rand, arrangeT);
 }
 
 function makeObstacle(
@@ -146,7 +123,7 @@ export function createObstacleField(seed: number): ObstacleField {
   for (let i = 0; i < tuning.safeRingCount; i++) {
     const angle = (i / tuning.safeRingCount) * Math.PI * 2 + rand() * 0.25;
     const dist = tuning.safeRingRadius + rand() * 8;
-    const kind = pickKind(rand, 0.24);
+    const kind = pickKind(rand, 0);
     obstacles.push(
       makeObstacle(
         nextId++,
@@ -177,7 +154,7 @@ export function createObstacleField(seed: number): ObstacleField {
     speed01: number,
     headingX: number,
     headingZ: number,
-    arrange01: number,
+    arrangeT: number,
     forcedKind?: ObstacleKind,
   ) => {
     const radius = Math.hypot(px, pz);
@@ -197,7 +174,7 @@ export function createObstacleField(seed: number): ObstacleField {
     }
 
     const moving = rand() < moverChanceAt(speed01);
-    const kind = forcedKind ?? pickNeededKind(rand, arrange01, obstacles);
+    const kind = forcedKind ?? pickNeededKind(rand, arrangeT, obstacles);
     obstacles.push(makeObstacle(nextId++, x, z, rand, moving, kind));
     return true;
   };
@@ -210,7 +187,7 @@ export function createObstacleField(seed: number): ObstacleField {
     noteHit() {
       ease = Math.min(1, ease + tuning.densityEaseHit);
     },
-    step(dt, time, px, pz, speed01, headingX, headingZ, arrange01 = 1) {
+    step(dt, time, px, pz, speed01, headingX, headingZ, arrangeT = 99) {
       ease = Math.max(0, ease - dt * tuning.densityEaseDecay);
       recycleOrCull(px, pz);
 
@@ -219,16 +196,17 @@ export function createObstacleField(seed: number): ObstacleField {
       spawnAcc += Math.max(speed01, 0.08) * tuning.maxSpeed * dt;
       while (spawnAcc >= spacing) {
         spawnAcc -= spacing;
-        trySpawn(px, pz, speed01, headingX, headingZ, arrange01);
+        trySpawn(px, pz, speed01, headingX, headingZ, arrangeT);
       }
 
       if (obstacles.length < densityAt(speed01, radius, ease) * 0.7) {
-        trySpawn(px, pz, speed01, headingX, headingZ, arrange01);
+        trySpawn(px, pz, speed01, headingX, headingZ, arrangeT);
       }
 
-      for (const kind of dueKinds(arrange01)) {
-        if (countKind(obstacles, kind) === 0) {
-          trySpawn(px, pz, speed01, headingX, headingZ, arrange01, kind);
+      for (const kind of dueKinds(arrangeT)) {
+        if (countKind(obstacles, kind) < 2) {
+          trySpawn(px, pz, speed01, headingX, headingZ, arrangeT, kind);
+          trySpawn(px, pz, speed01, headingX, headingZ, arrangeT, kind);
         }
       }
 

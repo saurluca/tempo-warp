@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { djHoldFor, nextTrack, prevTrack, TRACK_IDS, TRACKS } from "../../src/audio/tracks";
+import { djHoldFor, nextTrack, prevTrack, STEMS, TRACK_IDS, TRACKS } from "../../src/audio/tracks";
 
 describe("tracks", () => {
   it("every track is on a 16th grid and stems share a loop length", () => {
@@ -38,11 +38,23 @@ describe("tracks", () => {
   });
 
   it("stage hold grows with open stems", () => {
-    const hush = djHoldFor(0.24);
-    const mid = djHoldFor(0.5);
-    const full = djHoldFor(0.9);
+    const hush = djHoldFor(0);
+    const mid = djHoldFor(12);
+    const full = djHoldFor(36);
     expect(hush).toBeLessThan(mid);
     expect(mid).toBeLessThan(full);
+  });
+
+  it("stem gaps get longer each time", () => {
+    const times = STEMS.map((s) => s.t);
+    const gaps: number[] = [];
+    for (let i = 1; i < times.length; i++) {
+      const g = times[i]! - times[i - 1]!;
+      if (g > 0) gaps.push(g);
+    }
+    for (let i = 1; i < gaps.length; i++) {
+      expect(gaps[i]!).toBeGreaterThan(gaps[i - 1]!);
+    }
   });
 
   it("adjacent BPMs stay close enough to DJ", () => {

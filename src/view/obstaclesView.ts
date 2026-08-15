@@ -7,6 +7,7 @@ export interface StemHits {
   lead: number;
   voice: number;
   hat: number;
+  snare: number;
 }
 
 export interface ObstacleViews {
@@ -15,12 +16,12 @@ export interface ObstacleViews {
   dispose: () => void;
 }
 
-/** Each glyph kind listens to a different stem (kick/snare stay on the floor). */
+/** Each glyph kind listens to a stem. Rings flash on snare (and hats). */
 const STEM_OF: Record<ObstacleKind, keyof StemHits> = {
   spire: "bass",
   monolith: "voice",
   shard: "lead",
-  ring: "hat",
+  ring: "snare",
 };
 
 const KIND_COLOR: Record<ObstacleKind, number> = {
@@ -194,7 +195,11 @@ export function createObstacleViews(scene: THREE.Scene): ObstacleViews {
     ring.mat.opacity = 0.85;
   };
 
-  const sync = (obstacles: Obstacle[], dt = 0, stems: StemHits = { bass: 0, lead: 0, voice: 0, hat: 0 }) => {
+  const sync = (
+    obstacles: Obstacle[],
+    dt = 0,
+    stems: StemHits = { bass: 0, lead: 0, voice: 0, hat: 0, snare: 0 },
+  ) => {
     if (pulsing) {
       pulseR += dt * tuning.shatterPulseSpeed;
       if (pulseR >= tuning.shatterPulseMax) {
@@ -224,7 +229,10 @@ export function createObstacleViews(scene: THREE.Scene): ObstacleViews {
       glyph.root.position.set(o.x, 1.0, o.z);
       if (o.kind === "shard") glyph.root.rotation.y += 0.012;
 
-      const hit = stems[STEM_OF[o.kind]] ?? 0;
+      const hit =
+        o.kind === "ring"
+          ? Math.max(stems.snare, stems.hat)
+          : (stems[STEM_OF[o.kind]] ?? 0);
       hot.setHex(KIND_COLOR[o.kind]);
       if (hit > 0.02) {
         flash.setHex(KIND_FLASH[o.kind]);

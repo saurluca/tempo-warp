@@ -120,8 +120,6 @@ export const tuning = {
   /** DJ handoff: duck out, swap pattern, then stems climb like a new run. */
   djFadeOut: 2.4,
   djFadeIn: 3.2,
-  /** arrange01 rise (1/s) after a spin — hush bed → full mix in ~14s */
-  arrangeRise: 0.055,
   /** Survive seconds without a hit: hush is short, full mix is longest. */
   djHoldBase: 16,
   djHoldPerPart: 7,

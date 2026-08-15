@@ -17,6 +17,7 @@ import { createObstacleViews } from "./view/obstaclesView";
 import { createPlayerBlob } from "./view/playerBlob";
 import { createGameScene } from "./view/scene";
 import { createShatterBurst } from "./view/shatterBurst";
+import { createStars } from "./view/stars";
 
 const flags = readFlags();
 console.info("[tempo-warp] boot", flags);
@@ -33,6 +34,7 @@ const beatMode = (flags.seed >>> 0) % 2 === 0 ? "rings" : "wave";
 beatWave.setActive(beatMode === "wave");
 console.info("[tempo-warp] beat", beatMode);
 const burst = createShatterBurst(game.scene);
+const stars = createStars(game.scene);
 const craft = createPlayerBlob(game.scene);
 createLandmarks(game.scene);
 const audio = createAudioBus(flags.track);
@@ -114,7 +116,7 @@ startLoop(
       hx = pointer.worldX - player.x;
       hz = pointer.worldZ - player.z;
     }
-    field.step(dt, simTime, player.x, player.z, player.speed01, hx, hz, audio.arrange01);
+    field.step(dt, simTime, player.x, player.z, player.speed01, hx, hz, audio.arrangeT);
 
     // Latch: after a hit, ignore collisions until fully clear (fixes ghost re-stops)
     if (!player.clearOfHazards) {
@@ -192,6 +194,8 @@ startLoop(
       beatMode === "rings" ? (hold < 0.4 ? 1 : hold < 0.7 ? 2 : 3) + (current > 0.35 ? 1 : 0) : 0;
     groundWarp.setBeat(audio.kick, audio.snare, audio.hat, beatLines, dtReal);
     groundWarp.follow(player.x, player.z);
+    stars.setBand(colorForRadius(radius));
+    stars.update(player.x, player.z, radius, speed, audio.kick, audio.snare, audio.hat, dtReal);
     game.placeGround(player.x, player.z);
 
     obstacleViews.sync(field.obstacles, dtReal, {
@@ -199,6 +203,7 @@ startLoop(
       lead: audio.lead,
       voice: audio.voice,
       hat: audio.hat,
+      snare: audio.snare,
     });
     game.followPlayer(player.x, player.z, dtReal);
     const halfW = (game.camera.right - game.camera.left) * 0.5;

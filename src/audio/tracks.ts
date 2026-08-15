@@ -770,13 +770,37 @@ export function prevTrack(current: TrackId): TrackId {
   return TRACK_IDS[Math.max(0, i - 1)]!;
 }
 
-/** Same open points as the mix — kick, bass, snare, hat, lead, voice. */
-export const STEM_GATES = [0.12, 0.22, 0.28, 0.45, 0.62, 0.78] as const;
+/** Seconds on a track before each stem. Gaps grow: 5, 7, 10, 14. */
+export const STEMS = [
+  { id: "kick", t: 0, kind: null },
+  { id: "bass", t: 0, kind: "spire" },
+  { id: "snare", t: 5, kind: "ring" },
+  { id: "hat", t: 12, kind: "ring" },
+  { id: "lead", t: 22, kind: "shard" },
+  { id: "voice", t: 36, kind: "monolith" },
+] as const;
+
+/** Bodies show this many seconds before you hear that stem. */
+export const STEM_VISUAL_LEAD = 2.5;
+
+export function stemOpen(arrangeT: number, id: (typeof STEMS)[number]["id"]): boolean {
+  const s = STEMS.find((x) => x.id === id);
+  return !!s && arrangeT >= s.t;
+}
+
+export function dueKindsAt(arrangeT: number): Array<"spire" | "ring" | "shard" | "monolith"> {
+  const out: Array<"spire" | "ring" | "shard" | "monolith"> = [];
+  for (const s of STEMS) {
+    if (!s.kind || arrangeT < s.t - STEM_VISUAL_LEAD) continue;
+    if (!out.includes(s.kind)) out.push(s.kind);
+  }
+  return out;
+}
 
 /** Survive this long without a hit. More open stems = a longer stage. */
-export function djHoldFor(arrange01: number): number {
+export function djHoldFor(arrangeT: number): number {
   let parts = 0;
-  for (const g of STEM_GATES) if (arrange01 > g) parts += 1;
+  for (const s of STEMS) if (arrangeT >= s.t) parts += 1;
   if (parts < 1) parts = 1;
   return tuning.djHoldBase + (parts - 1) * tuning.djHoldPerPart;
 }

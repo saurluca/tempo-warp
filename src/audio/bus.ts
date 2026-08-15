@@ -1,14 +1,16 @@
 import * as Tone from "tone";
 import { tuning } from "../tuning";
-import { djHoldFor, KITS, nextTrack, TRACKS, type Kit, type LeadKind, type TrackId } from "./tracks";
+import { djHoldFor, KITS, nextTrack, stemOpen, STEMS, TRACKS, type Kit, type LeadKind, type TrackId } from "./tracks";
 
 export interface AudioBus {
   unlocked: boolean;
   muted: boolean;
   track: TrackId;
   musicHold: number;
-  /** Stem-open curve — resets on a DJ spin so the new song builds again. */
+  /** Stem-open curve — time on this track, not distance. */
   arrange01: number;
+  /** Seconds the current arrangement has been building. */
+  arrangeT: number;
   kick: number;
   snare: number;
   hat: number;
@@ -30,7 +32,7 @@ export interface AudioBus {
 }
 
 /**
- * One journey mix. radius01 (peak-held) opens stems;
+ * One journey mix. Time on the track opens stems;
  * speed01 opens intensity. The outer rim does not mute the groove.
  */
 export function createAudioBus(initialTrack: TrackId): AudioBus {
@@ -43,16 +45,19 @@ export function createAudioBus(initialTrack: TrackId): AudioBus {
   /** Always a hush bed — never start (or decay) to silence. */
   const hushBed = 0.24;
   let musicHold = hushBed;
-  let arrange01 = hushBed;
+  let arrangeT = 0;
   let shattered = false;
   let lastShattered = false;
   /** idle | ducking outgoing | opening incoming */
   let spin: "idle" | "out" | "in" = "idle";
   let pendingTrack: TrackId | null = null;
   let mixOut = 0;
-  /** After a spin, climb stems instead of snapping to musicHold. */
-  let catching = false;
   let onTrack = 0;
+
+  const arrange01Of = () => {
+    const build = STEMS[STEMS.length - 1]!.t;
+    return hushBed + (1 - hushBed) * Math.min(1, arrangeT / Math.max(0.001, build));
+  };
 
   const master = new Tone.Gain(0).toDestination();
   const duck = new Tone.Gain(1);
@@ -224,18 +229,18 @@ export function createAudioBus(initialTrack: TrackId): AudioBus {
   const applyMix = () => {
     if (!unlocked || muted || sleeping) return;
     const s = shattered ? 0 : speed01;
-    const h = shattered ? arrange01 * 0.35 : arrange01;
+    const h = shattered ? arrange01Of() * 0.35 : arrange01Of();
     const fade = mixOut * mixOut * (3 - 2 * mixOut);
     const duckAmt = (shattered ? 0.12 : 1) * (1 - fade * 0.94);
 
     duck.gain.rampTo(duckAmt, 0.35);
 
-    const kickOn = h > 0.12;
-    const snareOn = h > 0.28;
-    const hatOn = h > 0.45;
-    const bassOn = h > 0.22;
-    const leadOn = h > 0.62;
-    const voiceOn = h > 0.78;
+    const kickOn = stemOpen(arrangeT, "kick");
+    const snareOn = stemOpen(arrangeT, "snare");
+    const hatOn = stemOpen(arrangeT, "hat");
+    const bassOn = stemOpen(arrangeT, "bass");
+    const leadOn = stemOpen(arrangeT, "lead");
+    const voiceOn = stemOpen(arrangeT, "voice");
 
     kickGain.gain.rampTo(kickOn ? 0.42 + s * 0.38 : 0, 0.12);
     snareGain.gain.rampTo(snareOn ? 0.16 + s * 0.4 : 0, 0.12);
@@ -275,34 +280,33 @@ export function createAudioBus(initialTrack: TrackId): AudioBus {
       (time, step) => {
         const i = step as number;
         const s = speed01;
-        const h = arrange01;
         if (shattered) return;
 
-        if (h > 0.12 && def.kick[i]) {
+        if (stemOpen(arrangeT, "kick") && def.kick[i]) {
           kick.triggerAttackRelease(kit.kickNote, "8n", time, 0.7 + s * 0.3);
           kickPulse = 1;
         }
-        if (h > 0.28 && def.snare[i]) {
+        if (stemOpen(arrangeT, "snare") && def.snare[i]) {
           snare.triggerAttackRelease("16n", time, 0.45 + s * 0.4);
           snarePulse = 1;
         }
-        if (h > 0.45 && def.hat[i]) {
+        if (stemOpen(arrangeT, "hat") && def.hat[i]) {
           hat.triggerAttackRelease("C5", "32n", time, 0.22 + s * 0.55);
           hatPulse = 1;
         }
 
         const bassNote = def.bass[i % def.bass.length];
-        if (h > 0.22 && bassNote) {
+        if (stemOpen(arrangeT, "bass") && bassNote) {
           bass.triggerAttackRelease(bassNote, "8n", time, 0.5 + s * 0.35);
           bassPulse = 1;
         }
 
         const leadNote = def.lead[i % def.lead.length];
-        if (h > 0.62 && leadNote && s > 0.08) {
+        if (stemOpen(arrangeT, "lead") && leadNote && s > 0.08) {
           fireLead(leadNote, time, 0.28 + s * 0.5);
           leadPulse = 1;
         }
-        if (h > 0.78 && leadNote && i % 4 === 0) {
+        if (stemOpen(arrangeT, "voice") && leadNote && i % 4 === 0) {
           voice.triggerAttackRelease(leadNote, "8n", time, 0.22 + s * 0.3);
           voicePulse = 1;
         }
@@ -338,7 +342,10 @@ export function createAudioBus(initialTrack: TrackId): AudioBus {
       return musicHold;
     },
     get arrange01() {
-      return arrange01;
+      return arrange01Of();
+    },
+    get arrangeT() {
+      return arrangeT;
     },
     get kick() {
       return kickPulse;
@@ -419,6 +426,7 @@ export function createAudioBus(initialTrack: TrackId): AudioBus {
       if (id === trackId) return;
       trackId = id;
       onTrack = 0;
+      arrangeT = 0;
       if (unlocked) {
         buildLoop(trackId);
         applyMix();
@@ -430,7 +438,7 @@ export function createAudioBus(initialTrack: TrackId): AudioBus {
       return n;
     },
     spinNext() {
-      if (spin !== "idle" || onTrack < djHoldFor(arrange01)) return trackId;
+      if (spin !== "idle" || onTrack < djHoldFor(arrangeT)) return trackId;
       pendingTrack = nextTrack(trackId);
       spin = "out";
       console.info("[tempo-warp] spin", pendingTrack);
@@ -449,8 +457,7 @@ export function createAudioBus(initialTrack: TrackId): AudioBus {
         if (mixOut >= 1 && pendingTrack) {
           trackId = pendingTrack;
           pendingTrack = null;
-          arrange01 = hushBed;
-          catching = true;
+          arrangeT = 0;
           onTrack = 0;
           if (unlocked) buildLoop(trackId);
           spin = "in";
@@ -460,21 +467,12 @@ export function createAudioBus(initialTrack: TrackId): AudioBus {
         if (mixOut <= 0) spin = "idle";
       }
 
-      // First song follows musicHold; a DJ'd song rebuilds stems from the bed.
-      if (spin !== "out") {
-        if (catching) {
-          arrange01 = Math.min(musicHold, arrange01 + tuning.arrangeRise * dt);
-          if (arrange01 >= musicHold - 1e-4) catching = false;
-        } else {
-          arrange01 = musicHold;
-        }
-      }
-
       if (isShattered && !lastShattered) onTrack = 0;
       shattered = isShattered;
+      if (unlocked && spin !== "out" && !isShattered) arrangeT += dt;
       if (unlocked && spin === "idle" && !isShattered) {
         onTrack += dt;
-        if (onTrack >= djHoldFor(arrange01)) bus.spinNext();
+        if (onTrack >= djHoldFor(arrangeT)) bus.spinNext();
       }
 
       if (!unlocked || muted || sleeping) return;
