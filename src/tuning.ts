@@ -3,13 +3,15 @@
 export const tuning = {
   /** Top speed once throttle has fully spun up */
   maxSpeed: 48,
+  /** Phones see a smaller screen — same world, less reaction time */
+  mobileSpeedScale: 0.72,
 
   /**
    * Car-like throttle: hold click to spool up, release to coast.
    * throttleRise ~ seconds toward full; throttleFall ~ seconds back to idle.
    */
   throttleRise: 1.7,
-  throttleFall: 2.8,
+  throttleFall: 1.5,
   /** Engine push while throttling (world units / s² at full throttle) */
   engineAccel: 20,
   /** Lateral / aim assist push (keeps turns lively without hard accel) */
@@ -20,7 +22,7 @@ export const tuning = {
    */
   turnAgility: 7.5,
   /** Low coast drag (1/s). Higher = stops sooner. Keep low for car glide. */
-  coastDrag: 0.35,
+  coastDrag: 0.55,
   /** Extra drag only used as soft speed limiter near max */
   speedLimitDrag: 1.8,
 

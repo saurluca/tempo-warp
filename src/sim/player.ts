@@ -1,5 +1,7 @@
+import { isMobile } from "../flags";
 import { tuning } from "../tuning";
 import type { PlayerState } from "./types";
+import { maxSpeed } from "./world";
 
 export function createPlayer(): PlayerState {
   return {
@@ -112,7 +114,7 @@ export function stepPlayer(
     const control = p.shatterT > 0 ? 0.35 : 1;
     const near = 0.35 + 0.65 * aimBlend;
     const steer = tuning.steerAccel * (0.45 + 0.55 * Math.max(p.throttle, 0.25)) * control * near;
-    const engine = tuning.engineAccel * p.throttle * control;
+    const engine = tuning.engineAccel * (isMobile() ? tuning.mobileSpeedScale : 1) * p.throttle * control;
 
     // Engine along current velocity — never reverse-thrust toward aim.
     const spd2 = Math.hypot(p.vx, p.vz);
@@ -141,9 +143,10 @@ export function stepPlayer(
   p.vx *= drag;
   p.vz *= drag;
 
+  const cap = maxSpeed();
   const spd = Math.hypot(p.vx, p.vz);
-  if (spd > tuning.maxSpeed) {
-    const over = spd - tuning.maxSpeed;
+  if (spd > cap) {
+    const over = spd - cap;
     const brake = Math.exp(-tuning.speedLimitDrag * (1 + over * 0.05) * dt);
     p.vx *= brake;
     p.vz *= brake;
@@ -152,7 +155,7 @@ export function stepPlayer(
   p.x += p.vx * dt;
   p.z += p.vz * dt;
 
-  p.speed01 = Math.min(1, Math.hypot(p.vx, p.vz) / tuning.maxSpeed);
+  p.speed01 = Math.min(1, Math.hypot(p.vx, p.vz) / cap);
 }
 
 /** Soft impact: knock outward, keep moving — never freeze to a dead stop. */
@@ -173,7 +176,7 @@ export function applyImpact(p: PlayerState, fromX: number, fromZ: number): void 
   p.vx = nx * keep;
   p.vz = nz * keep;
   p.throttle = Math.max(p.throttle * tuning.impactThrottleKeep, 0);
-  p.speed01 = Math.min(1, keep / tuning.maxSpeed);
+  p.speed01 = Math.min(1, keep / maxSpeed());
   p.boosting = false;
   p.shatterT = tuning.shatterRecover;
   p.clearOfHazards = false;

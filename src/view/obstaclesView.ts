@@ -30,6 +30,13 @@ const KIND_COLOR: Record<ObstacleKind, number> = {
   ring: 0x2ee6a6,
 };
 
+const KIND_FLASH: Record<ObstacleKind, number> = {
+  spire: 0x9be7ff,
+  monolith: 0xff9af5,
+  shard: 0xffe14a,
+  ring: 0x9fff4a,
+};
+
 function disposeObject(obj: THREE.Object3D): void {
   obj.traverse((child) => {
     if (child instanceof THREE.Mesh || child instanceof THREE.Line) {
@@ -172,7 +179,7 @@ export function createObstacleViews(scene: THREE.Scene): ObstacleViews {
   const glyphs = new Map<number, Glyph>();
   const kinds = new Map<number, ObstacleKind>();
   const hot = new THREE.Color();
-  const flash = new THREE.Color(0xffffff);
+  const flash = new THREE.Color();
   const ring = makePulseRing();
   group.add(ring.mesh);
 
@@ -219,7 +226,10 @@ export function createObstacleViews(scene: THREE.Scene): ObstacleViews {
 
       const hit = stems[STEM_OF[o.kind]] ?? 0;
       hot.setHex(KIND_COLOR[o.kind]);
-      if (hit > 0.02) hot.lerp(flash, hit * 0.55);
+      if (hit > 0.02) {
+        flash.setHex(KIND_FLASH[o.kind]);
+        hot.lerp(flash, hit);
+      }
       glyph.fillMat.color.copy(hot);
       glyph.rimMat.color.copy(hot);
       glyph.fillMat.opacity = tuning.hazardFillOpacity * (1 + o.telegraphT * 0.4 + hit * 0.4);

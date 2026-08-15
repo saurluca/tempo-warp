@@ -13,6 +13,12 @@ function parseTrack(value: string | null, seed: number): TrackId {
   return pickRandomTrack(seed);
 }
 
+/** Touch phone/tablet — not a mouse desktop, even if the window is narrow. */
+export function isMobile(): boolean {
+  if (typeof matchMedia !== "function") return false;
+  return matchMedia("(hover: none) and (pointer: coarse)").matches;
+}
+
 export function readFlags(search = window.location.search): Flags {
   const params = new URLSearchParams(search);
   const seedParam = params.get("seed");

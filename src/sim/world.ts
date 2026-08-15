@@ -1,5 +1,10 @@
+import { isMobile } from "../flags";
 import { tuning } from "../tuning";
 import type { PlayerState } from "./types";
+
+export function maxSpeed(): number {
+  return isMobile() ? tuning.maxSpeed * tuning.mobileSpeedScale : tuning.maxSpeed;
+}
 
 const clamp01 = (t: number) => Math.min(1, Math.max(0, t));
 
@@ -66,11 +71,12 @@ export function applyCurrent(p: PlayerState, dt: number): void {
   p.vx += rx * a * c * dt;
   p.vz += rz * a * c * dt;
   const n = Math.hypot(p.vx, p.vz);
-  if (n > tuning.maxSpeed) {
-    p.vx *= tuning.maxSpeed / n;
-    p.vz *= tuning.maxSpeed / n;
+  const cap = maxSpeed();
+  if (n > cap) {
+    p.vx *= cap / n;
+    p.vz *= cap / n;
   }
-  p.speed01 = Math.min(1, n / tuning.maxSpeed);
+  p.speed01 = Math.min(1, n / cap);
 }
 
 /** 0 hush … 4 sanctuary */
