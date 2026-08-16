@@ -36,7 +36,7 @@ export interface AudioBus {
  * speed01 opens intensity. The outer rim does not mute the groove.
  */
 export function createAudioBus(initialTrack: TrackId): AudioBus {
-  const MASTER = 0.55;
+  const MASTER = 0.9;
   let unlocked = false;
   let muted = false;
   let sleeping = false;
