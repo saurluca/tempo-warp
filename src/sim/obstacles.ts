@@ -1,4 +1,5 @@
 import { dueKindsAt } from "../audio/tracks";
+import { isMobile } from "../flags";
 import { mulberry32 } from "../rng";
 import { tuning } from "../tuning";
 import type { Obstacle, ObstacleKind } from "./types";
@@ -65,7 +66,8 @@ function makeObstacle(
   kind: ObstacleKind = pickKind(rand),
 ): Obstacle {
   const span = tuning.obstacleHalfMax - tuning.obstacleHalfMin;
-  const size = tuning.obstacleHalfMin + rand() * span;
+  const scale = isMobile() ? tuning.mobileSizeScale : 1;
+  const size = (tuning.obstacleHalfMin + rand() ** tuning.obstacleSizePower * span) * scale;
 
   // Match the 2D glyphs, a hair inside the ink so glow doesn't fake-hit
   let hitR = size * 1.05 * 0.94;
@@ -89,10 +91,10 @@ function makeObstacle(
     hitInnerR,
     baseX: x,
     baseZ: z,
-    moveAmp: moving ? 1.4 + rand() * 2.2 : 0,
+    moveAmp: moving ? tuning.moveAmpMin + rand() * (tuning.moveAmpMax - tuning.moveAmpMin) : 0,
     moveAxis: rand() > 0.5 ? "x" : "z",
     movePhase: rand() * Math.PI * 2,
-    moveSpeed: 0.7 + rand() * 1.4,
+    moveSpeed: tuning.moveSpeedMin + rand() * (tuning.moveSpeedMax - tuning.moveSpeedMin),
     telegraphT: 0,
     moving,
   };
@@ -167,7 +169,7 @@ export function createObstacleField(seed: number): ObstacleField {
     if (Math.hypot(x - px, z - pz) < tuning.clearBubble) return false;
 
     for (const o of obstacles) {
-      if (Math.hypot(o.baseX - x, o.baseZ - z) < 5.5) return false;
+      if (Math.hypot(o.baseX - x, o.baseZ - z) < tuning.obstacleHalfMax + 2.5) return false;
     }
 
     const moving = rand() < moverChanceAt(speed01);

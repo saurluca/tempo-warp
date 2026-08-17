@@ -5,6 +5,8 @@ export const tuning = {
   maxSpeed: 48,
   /** Phones see a smaller screen — same world, less reaction time */
   mobileSpeedScale: 0.76,
+  /** Shrink hazards on phones so they don't eat the frame */
+  mobileSizeScale: 0.82,
 
   /**
    * Car-like throttle: hold click to spool up, release to coast.
@@ -128,8 +130,14 @@ export const tuning = {
   safeRingRadius: 90,
   /** Bias spawns into the travel/aim cone (0 = full ring, 1 = only ahead) */
   spawnForwardBias: 0.78,
-  moverChanceMin: 0.14,
-  moverChanceMax: 0.52,
-  obstacleHalfMin: 1.4,
-  obstacleHalfMax: 3.2,
+  moverChanceMin: 0.22,
+  moverChanceMax: 0.72,
+  obstacleHalfMin: 0.7,
+  obstacleHalfMax: 5.4,
+  /** >1 skews toward small; big ones still roll, just rarer */
+  obstacleSizePower: 2.1,
+  moveAmpMin: 2.8,
+  moveAmpMax: 7.4,
+  moveSpeedMin: 1.2,
+  moveSpeedMax: 3.6,
 } as const;
